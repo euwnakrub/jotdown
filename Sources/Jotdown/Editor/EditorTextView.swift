@@ -6,7 +6,11 @@ final class EditorTextView: NSTextView {
     /// non-contiguous layout ทำให้ NSTextTable วางเซลล์ผิดคอลัมน์ จึงปิด (ดู README) — เปิดได้เฉพาะเพื่อทดลองในเทสต์
     nonisolated(unsafe) static var useNonContiguousLayout = false
     var tableCheckWork: DispatchWorkItem?
+    /// ผู้เล่นวิดีโอที่กำลังเล่น (key = attachment ของการ์ด) — สร้างเฉพาะตอนกดเล่น
+    var videoPlayers: [ObjectIdentifier: VideoPlayerView] = [:]
     var internalEdit = false
+    /// ตำแหน่งต้นกล่องโค้ดที่กำลังเลือกภาษา (จากป้ายภาษาหรือเมนูคลิกขวา)
+    var languageTarget = 0
     /// ข้อความที่กำลังจะแทนที่ช่วงที่ shouldChangeText ตรวจอยู่ (ใช้ตอนลบตารางทั้งตารางแล้วพิมพ์ทับ)
     var pendingReplacement: String?
     /// โฟลเดอร์ที่ path รูปสัมพัทธ์อ้างอิง (ผู้ใช้: EditorViewController ผูกกับเอกสาร)
@@ -87,6 +91,7 @@ final class EditorTextView: NSTextView {
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         updateInsets()
+        updatePlayerFrames()
     }
 
     // MARK: - ย่อหน้า / บล็อกที่เคอร์เซอร์
@@ -148,6 +153,7 @@ final class EditorTextView: NSTextView {
     /// ปรับระยะย่อหน้าของย่อหน้าข้างเคียงหลังแก้ไข (ระยะหลังย่อหน้าขึ้นกับบล็อกถัดไป)
     override func didChangeText() {
         super.didChangeText()
+        updatePlayerFrames()
         guard storage.length > 0 else { return }
         scheduleTableLayoutCheck()
         let sel = selectedRange()
@@ -249,6 +255,13 @@ final class EditorTextView: NSTextView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        if let hit = videoHit(atViewPoint: convert(event.locationInWindow, from: nil)) {
+            window?.makeFirstResponder(self)
+            setSelectedRange(NSRange(location: hit.index, length: 1))
+            let p = convert(event.locationInWindow, from: nil)
+            if VideoCell.playButtonRect(in: VideoCell.videoArea(in: hit.rect)).insetBy(dx: -4, dy: -4).contains(p) { playVideo(at: hit.index) }
+            return
+        }
         if let hit = imageHit(event) {
             window?.makeFirstResponder(self)
             setSelectedRange(NSRange(location: hit.index, length: 1))
@@ -260,6 +273,11 @@ final class EditorTextView: NSTextView {
             var frac: CGFloat = 0
             let idx = lm.characterIndex(for: cp, in: tc, fractionOfDistanceBetweenInsertionPoints: &frac)
             if idx < storage.length {
+                if storage.blockKind(at: idx).isCode, let label = lm.languageLabelRect(forParagraphAt: idx), label.insetBy(dx: -6, dy: -4).contains(cp) {
+                    window?.makeFirstResponder(self)
+                    showLanguageMenu(forBlockAt: idx)
+                    return
+                }
                 if case .task = storage.blockKind(at: idx),
                    let box = lm.markerRect(forParagraphAt: idx), box.insetBy(dx: -5, dy: -5).contains(cp) {
                     toggleTaskChecked(at: idx)

@@ -97,6 +97,8 @@ extension NSAttributedString.Key {
     static let jotImage = NSAttributedString.Key("com.euw.jot.image")
     /// ลิงก์ Obsidian (ค่า = ข้อความดิบ `[[…]]` ทั้งก้อน เขียนกลับตามเดิม)
     static let jotWiki = NSAttributedString.Key("com.euw.jot.wiki")
+    /// วิดีโอ YouTube (ค่า = `VideoRef.encoded`) ตัวอักษร U+FFFC 1 ตัวที่มี `.attachment` ของเรา
+    static let jotVideo = NSAttributedString.Key("com.euw.jot.video")
 }
 
 extension NSAttributedString {

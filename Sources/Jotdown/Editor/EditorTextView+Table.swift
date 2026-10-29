@@ -314,6 +314,7 @@ extension EditorTextView {
             if t == "Insert Row Above" || t == "Delete Row" || t == "Align Column Left" { m.addItem(.separator()) }
             let i = NSMenuItem(title: t, action: sel, keyEquivalent: ""); i.target = self; m.addItem(i)
         }
+        MenuIcons.decorate(m)
         return m
     }
 }

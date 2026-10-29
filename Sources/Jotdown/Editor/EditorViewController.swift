@@ -41,7 +41,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         nc.addObserver(self, selector: #selector(didReload), name: .jotDocumentDidReload, object: document)
     }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        MainActor.assumeIsolated { textView?.stopAllPlayers() }
+    }
+
+    override func viewWillDisappear() {
+        super.viewWillDisappear()
+        textView?.stopAllPlayers()
+    }
 
     override func viewDidAppear() {
         super.viewDidAppear()
@@ -54,6 +62,16 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             let r = (document.textStorage.string as NSString).range(of: t)
             if r.location != NSNotFound {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.textView.scrollRangeToVisible(NSRange(location: r.location + min(r.length + 400, 900), length: 1)) }
+            }
+        }
+        // dev: JOTDOWN_SELFTEST_YOUTUBE=1 เล่นวิดีโอแรกในเอกสารเองหลังเปิด (ตรวจการเล่นจริงด้วยภาพถ่ายหน้าจอ ไม่ต้องจำลองเมาส์)
+        if ProcessInfo.processInfo.environment["JOTDOWN_SELFTEST_YOUTUBE"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let tv = self?.textView else { return }
+                let s = tv.textStorage
+                var first: Int?
+                s?.enumerateAttribute(.jotVideo, in: NSRange(location: 0, length: s?.length ?? 0)) { v, r, stop in if v != nil { first = r.location; stop.pointee = true } }
+                if let i = first { tv.scrollRangeToVisible(NSRange(location: i, length: 1)); tv.playVideo(at: i) }
             }
         }
         toolbarController?.update()

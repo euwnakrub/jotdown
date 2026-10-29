@@ -141,10 +141,13 @@ enum MarkdownSerializer {
             if let enc = attrs[.jotImage] as? String, let ref = ImageRef(encoded: enc) {
                 segs.append(InlineSegment(text: text, style: [], link: link, image: ref)); return
             }
+            if let enc = attrs[.jotVideo] as? String, let v = VideoRef(encoded: enc) {
+                segs.append(InlineSegment(text: text, style: [], link: link, video: v)); return
+            }
             if let w = attrs[.jotWiki] as? String {
                 segs.append(InlineSegment(text: text, style: style, link: link, wiki: w)); return
             }
-            if var last = segs.last, last.image == nil, last.wiki == nil, last.style == style, last.link == link {
+            if var last = segs.last, last.image == nil, last.wiki == nil, last.video == nil, last.style == style, last.link == link {
                 last.text += text; segs[segs.count - 1] = last
             } else { segs.append(InlineSegment(text: text, style: style, link: link)) }
         }

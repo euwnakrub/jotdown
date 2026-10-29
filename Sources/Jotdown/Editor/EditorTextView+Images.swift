@@ -46,6 +46,7 @@ extension EditorTextView {
             lm.ensureLayout(forCharacterRange: r)
         }
         refreshWikiLinks()
+        updatePlayerFrames()
         scheduleTableLayoutCheck()
         needsDisplay = true
     }
@@ -64,8 +65,15 @@ extension EditorTextView {
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
+        let m = contextMenu(for: event)
+        if let m { MenuIcons.decorate(m) }
+        return m
+    }
+
+    private func contextMenu(for event: NSEvent) -> NSMenu? {
         guard let hit = imageHit(event) else {
             let p = convert(event.locationInWindow, from: nil)
+            if let v = videoHit(atViewPoint: p) { return videoContextMenu(index: v.index) }
             if let link = linkHit(atViewPoint: p) {
                 setSelectedRange(NSRange(location: link.range.location + min(1, link.range.length), length: 0))
                 let m = NSMenu()
@@ -80,6 +88,18 @@ extension EditorTextView {
             if cellInfo(at: min(idx, max(storage.length - 1, 0))) != nil {
                 setSelectedRange(NSRange(location: idx, length: 0))
                 return tableContextMenu()
+            }
+            if idx < storage.length, storage.blockKind(at: idx).isCode {
+                // กล่องโค้ด: เมนูภาษาไว้บนสุด ตามด้วยเมนูมาตรฐาน
+                let m = NSMenu()
+                let host = NSMenuItem(title: "Code Language", action: nil, keyEquivalent: "")
+                host.submenu = languageMenu(forBlockAt: idx)
+                m.addItem(host)
+                if let base = super.menu(for: event), !base.items.isEmpty {
+                    m.addItem(.separator())
+                    for i in base.items { base.removeItem(i); m.addItem(i) }
+                }
+                return m
             }
             return super.menu(for: event)
         }

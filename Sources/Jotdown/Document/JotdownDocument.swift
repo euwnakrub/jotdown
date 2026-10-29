@@ -156,7 +156,7 @@ final class JotdownDocument: NSDocument, NSTextStorageDelegate {
     func textStorage(_ textStorage: NSTextStorage, willProcessEditing editedMask: NSTextStorageEditActions,
                      range editedRange: NSRange, changeInLength delta: Int) {
         guard !isReloading, editedMask.contains(.editedCharacters), textStorage.length > 0 else { return }
-        textStorage.restyleParagraphs(in: editedRange)
+        textStorage.restyleParagraphs(in: editedRange, highlight: false)     // สี syntax ใส่ใน EditorTextView.didChangeText หลังแก้เสร็จ
     }
 
     @objc private func storageDidEdit(_ n: Notification) {

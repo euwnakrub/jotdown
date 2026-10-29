@@ -5,6 +5,7 @@ struct InlineSegment: Equatable {
     var style: InlineStyle = []
     var link: String? = nil
     var image: ImageRef? = nil
+    var video: VideoRef? = nil       // การ์ดวิดีโอ YouTube (เขียนกลับเป็นข้อความต้นฉบับ)
     var wiki: String? = nil          // ข้อความดิบ `[[…]]` ของ Obsidian (text = ข้อความที่แสดง)
 }
 
@@ -106,7 +107,7 @@ enum InlineWriter {
         // 1) escape ตามบริบททั้งย่อหน้า
         var chars: [Character] = [], escapable: [Bool] = [], segOf: [Int] = []
         for (si, s) in segments.enumerated() {
-            let esc = !s.style.contains(.code) && !s.style.contains(.raw) && !s.style.contains(.hardBreak) && s.image == nil && s.wiki == nil
+            let esc = !s.style.contains(.code) && !s.style.contains(.raw) && !s.style.contains(.hardBreak) && s.image == nil && s.wiki == nil && s.video == nil
             for c in s.text { chars.append(c); escapable.append(esc); segOf.append(si) }
         }
         let escaped = escapedCharacters(chars, escapable: escapable, isHeading: isHeading, pipe: pipeEscape)
@@ -116,7 +117,9 @@ enum InlineWriter {
             var text = ""
             while idx < chars.count, segOf[idx] == si { text += escaped[idx]; idx += 1 }
             if text.isEmpty { continue }
-            if let raw = s.wiki {
+            if let v = s.video {
+                tokens.append(Token(text: v.raw, style: [], verbatim: true, link: nil))
+            } else if let raw = s.wiki {
                 tokens.append(Token(text: raw, style: s.style.intersection([.bold, .italic, .strike]), verbatim: true, link: s.link))
             } else if let img = s.image {
                 tokens.append(Token(text: img.raw ?? imageMarkdown(img), style: [], verbatim: true, link: s.link))

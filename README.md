@@ -26,8 +26,10 @@
 |---|---|
 | **Text** | Bold, italic, strikethrough, inline code, links |
 | **Blocks** | Headings 1–6, bulleted, numbered and checklists (nestable), quotes, code blocks, dividers |
+| **Code** | Syntax highlighting for Swift, Python, JavaScript/TypeScript, JSON, Bash, HTML/XML, CSS, SQL, Go, Rust, C/C++, Java, Kotlin, C#, YAML and Markdown. Click the language label at the top right of a code block to change it. |
 | **Tables** | Edit cells directly, use Tab to move between cells, add and remove rows and columns, set column alignment |
 | **Images** | Drag in images or paste screenshots. Images are copied into an `assets/` folder next to your note |
+| **YouTube** | Paste a YouTube link on its own line (or use Format → Insert YouTube Video…) to get a video card with thumbnail and title. Click play to watch right in the note. The file keeps the plain link, so it still works anywhere. A link in the middle of a sentence stays an ordinary link |
 | **Links** | Hover a link to open, copy, edit or remove it. Open with ⌥↩ or ⌘-click. Pasted URLs become links automatically |
 | **Obsidian** | `[[wikilinks]]`, `![[embedded images]]` and front matter work and are saved back exactly as written |
 | **Toolbar** | One-click buttons for every format. The buttons you are using light up |
@@ -79,6 +81,7 @@ Type these at the start of a line and they turn into formatting. Press ⌘Z to u
 | Tick a checklist item | ⌘↩ |
 | Quote / Code block | ⇧⌘. / ⌥⌘C |
 | Insert table / Insert image | ⌃⌘T / ⇧⌘I |
+| Insert YouTube video | ⌃⌘Y |
 | Open link | ⌥↩ |
 | Indent / Outdent list item | Tab / ⇧Tab |
 | Line break inside a list item | ⇧↩ |

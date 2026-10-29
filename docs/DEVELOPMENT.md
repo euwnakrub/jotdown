@@ -62,6 +62,7 @@
 - วาง markdown/HTML `<table>` เป็นตาราง, คัดลอกเซลล์ = markdown
 
 ### Toolbar จัดรูปแบบ (2026-10-29)
+- วิดีโอ YouTube: ไม่มี syntax ใหม่ — ย่อหน้าระดับบนสุดที่มีแต่ลิงก์ YouTube (URL เปล่า / `[ชื่อ](url)` / `<url>`) = การ์ด (`Markdown/YouTube.swift` parse URL/เวลา, `Editor/VideoSupport.swift` VideoCell + YouTubeMeta โหลด thumbnail hqdefault + oEmbed เบื้องหลัง cache ในหน่วยความจำ). เก็บบรรทัดต้นฉบับใน `.jotVideo` (VideoRef.raw) จึง round-trip ตรงไบต์. ลิงก์กลางประโยค/ใน list/quote/ตาราง = ลิงก์ธรรมดา. กดเล่น = `VideoPlayerView` (WKWebView สร้างเฉพาะตอนกดเล่น, youtube-nocookie + IFrame API, error 101/150/153 → "This video can't be played here" + Open in YouTube) วางเป็น subview ของ text view ตามตำแหน่งการ์ด (`updatePlayerFrames`). แทรก: วาง URL ในบรรทัดว่าง / พิมพ์ URL + Enter / Format → Insert YouTube Video… (⌃⌘Y) / ปุ่ม toolbar. ไม่มี "Show as Link". แอปไม่ sandbox จึงไม่ต้องมี entitlement เครือข่าย. เทสต์ใช้ URLProtocol ปลอม (ไม่แตะเน็ต), WKWebView ไม่โหลดในเทสต์ (`VideoPlayerView.loadsContent`); เล่นจริงตรวจด้วย `JOTDOWN_SELFTEST_YOUTUBE=1` — `YouTubeTests`
 - `NSToolbar` (`Editor/FormatToolbar.swift`, `toolbarStyle = .unified`: เรียบกว่า compact เพราะปุ่มเป็นแคปซูลกลุ่มเดียวกับแถบหัวหน้าต่าง) Text style popup + inline + lists + blocks (รวม Table และ Image…) tooltip อังกฤษ + คีย์ลัด, สถานะกดตามเคอร์เซอร์จาก `validateMenuItem` ตัวเดียวกับเมนู, overflow (») ผ่าน `menuFormRepresentation`, ปรับแต่งได้, View → Hide/Show Toolbar (⌥⌘T), Format → Insert Image… (⇧⌘I) — `ToolbarTests`
 
 ### ธีมเหลืองอำพัน + ชื่อ Jotdown (2026-10-29)
@@ -112,3 +113,18 @@
 - ซูม: `Theme.zoom` (0.7–2.0 ทีละ 0.1, `UserDefaults["JotdownZoom"]`) ทุกขนาดคูณผ่าน `Theme.s(_:)`; แคชฟอนต์/paragraph style/ตารางมี zoom ใน key; `AppDelegate.changeZoom` → `JotdownDocument.reapplyStyles()` จัดรูปแบบเอกสารที่เปิดอยู่ทุกฉบับใหม่ (ไม่เปลี่ยนไฟล์ ไม่ทริกเกอร์บันทึก) แล้วตรวจ layout ตาราง; เมนู View: Zoom In ⌘+ (และ ⌘= แบบซ่อน), Zoom Out ⌘−, Actual Size ⌘0 (disabled ที่ขอบช่วง) — `ZoomTests`; เทสต์คีย์ลัดไม่ชนเดิมครอบคลุม
 - เทสต์ตารางสังเคราะห์ (`TableLayoutTests`): ข้อความต้องไม่ลอกจากไฟล์ใคร; บั๊ก NSTextTable จำลองได้เมื่อคอลัมน์แรกสูงมาก (ประโยคไทยทั่วไปซ้ำ 3 ครั้ง) และตารางอยู่ใต้ขอบจอ ≥ ~60 ย่อหน้าก่อนตาราง — ประโยคสั้นกว่าไม่จำลองบั๊กได้ จึงใช้ `tallThai` และ `n ∈ {60, 80, 100}` (หลังเปลี่ยนฟอนต์ 14pt ตรวจซ้ำแล้วยังจำลองได้)
 - README: หัวข้อติดตั้งแก้ตาม Gatekeeper ของ macOS 15+ (Open Anyway / `xattr`) และ build เป็น arm64 อย่างเดียว (`lipo -archs` = arm64) จึงระบุ Apple silicon only
+
+
+### ไอคอนเมนู + บั๊ก highlight ในตาราง + code block (2026-10-30)
+
+**ไอคอนเมนู** — ตารางกลาง `Style/MenuIcons.swift` (selector → SF Symbol) ใช้ร่วมกันระหว่าง toolbar (`Tool.symbol` อ่านจากตารางนี้), เมนูหลัก (`MenuIcons.decorate(main)` ท้าย `MainMenu.build()`) และเมนูคลิกขวา (ตาราง/ลิงก์/วิดีโอ/รูป/โค้ด) หัวข้อใช้ `headingSymbol(level)` เมนูมาตรฐานของระบบไม่อยู่ในตาราง
+เทสต์: `MenuIconTests` (Format menu และ table context menu มี image ครบทุกรายการยกเว้น separator, toolbar ใช้ symbol เดียวกับเมนู)
+
+**บั๊ก highlight หัวตารางล้น** — root cause: `EditorLayoutManager.drawBackground` ฟิลล์ `boundsRect(for: block)` ทั้งช่องทุกครั้งที่เลือกข้อความในเซลล์ใดก็ตาม และ rect นั้นรวม margin ของ block (หัวตาราง margin บน 6pt, แถวสุดท้าย margin ล่าง 10pt) จึงล้นเหนือเส้นขอบ แก้: ฟิลล์ทั้งช่องเฉพาะเมื่อเลือกครอบเนื้อหาทั้งช่อง (เลือกหลายช่อง/ทั้งตาราง) และตัด margin + ความหนาเส้นขอบออก (`cellFillRect`); เลือกบางส่วนใช้ highlight ข้อความปกติ
+เทสต์: `TableSelectionTests` (snapshot light/dark + เทียบพิกเซลกับภาพฐาน ไฮไลต์ต้องไม่อยู่นอกเซลล์) PNG: `table-header-selection-*`, `table-body-selection-*`, `table-all-selection-*`
+
+**Code block** — พื้นเทาอมเหลือง (`Palette.codeBackgroundHex`) ใช้ร่วมกับ inline code
+- Syntax highlighting: `Markdown/SyntaxHighlighter.swift` tokenizer ฟังก์ชันล้วน (scan ครั้งเดียว UTF-16, ไม่มี dependency) ภาษา: swift python js/ts json bash html/xml css sql go rust c/cpp java kotlin csharp yaml markdown; ภาษาที่ไม่รู้จัก = ระบายแค่ string/number/comment; ไม่ระบุภาษา = ไม่ระบาย ตัวคั่นบรรทัดในกล่องคือ U+2028 (ไม่ถือเป็นตัวอักษร identifier)
+- สีเป็นแค่ `.foregroundColor` (ไม่กระทบ markdown): ใส่ตอน parse (`MarkdownParser.attributedString`) และ `restyleOne` → `applySyntaxColors` เฉพาะกล่องที่แก้ ห้ามทำใน `willProcessEditing` (editedRange โตแล้วเคอร์เซอร์เลื่อน) จึงมี `highlight:` flag และไปทำใน `didChangeText`
+- เปลี่ยนภาษา: ป้ายมุมบนขวาของกล่อง (คลิก → เมนู) หรือคลิกขวา > Code Language (`EditorTextView+CodeLanguage.swift`, undo ได้); `Other…` พิมพ์ชื่อเอง แถบหัวกล่องสูง `Theme.codeHeaderHeight`
+- เทสต์: `SyntaxTokenizerTests` (ทุกภาษา, runs ครอบคลุมข้อความ, 1000 บรรทัด < 1s, contrast ของ palette), `CodeBlockTests` (round-trip, สีตอนโหลด, พิมพ์แล้ว re-highlight เฉพาะกล่อง, เปลี่ยนภาษา/undo, snapshot `code-blocks-{aqua,dark}-*`)

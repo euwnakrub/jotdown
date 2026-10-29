@@ -30,7 +30,7 @@ import AppKit
                 count += 1
             }
         }
-        #expect(count == 12)
+        #expect(count == 13)
         let style = tb.toolbar(tb.toolbar, itemForItemIdentifier: FormatToolbar.textStyleID, willBeInsertedIntoToolbar: true) as! NSMenuToolbarItem
         #expect(style.menu.items.map(\.title) == ["Body", "Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5", "Heading 6"])
         #expect(style.menuFormRepresentation != nil)

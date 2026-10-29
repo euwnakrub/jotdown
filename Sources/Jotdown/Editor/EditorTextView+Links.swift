@@ -202,6 +202,7 @@ extension EditorTextView {
                          ("Edit Link…", #selector(jotEditLink(_:))), ("Remove Link", #selector(jotRemoveLink(_:)))] {
             let i = NSMenuItem(title: t, action: sel, keyEquivalent: ""); i.target = self; items.append(i)
         }
+        items.forEach { if $0.image == nil { $0.image = MenuIcons.image(for: $0.action, label: $0.title) } }
         return items
     }
 

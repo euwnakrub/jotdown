@@ -5,34 +5,36 @@ import AppKit
 final class FormatToolbar: NSObject, NSToolbarDelegate {
     struct Tool {
         var id: String
-        var symbol: String
         var tip: String           // tooltip (อังกฤษ + คีย์ลัด)
         var label: String
         var action: Selector
         var tag = 0
+        /// ไอคอนมาจากตารางกลาง `MenuIcons` (ตัวเดียวกับเมนู)
+        var symbol: String { MenuIcons.name(for: action, tag: tag) ?? "questionmark" }
     }
 
     static let textStyleID = NSToolbarItem.Identifier("jotdown.textStyle")
     static let groups: [(id: String, label: String, tools: [Tool])] = [
         ("jotdown.inline", "Inline", [
-            Tool(id: "bold", symbol: "bold", tip: "Bold (⌘B)", label: "Bold", action: #selector(EditorTextView.jotToggleBold(_:))),
-            Tool(id: "italic", symbol: "italic", tip: "Italic (⌘I)", label: "Italic", action: #selector(EditorTextView.jotToggleItalic(_:))),
+            Tool(id: "bold", tip: "Bold (⌘B)", label: "Bold", action: #selector(EditorTextView.jotToggleBold(_:))),
+            Tool(id: "italic", tip: "Italic (⌘I)", label: "Italic", action: #selector(EditorTextView.jotToggleItalic(_:))),
         ]),
         ("jotdown.inline2", "Inline", [
-            Tool(id: "strike", symbol: "strikethrough", tip: "Strikethrough (⇧⌘X)", label: "Strikethrough", action: #selector(EditorTextView.jotToggleStrike(_:))),
-            Tool(id: "code", symbol: "chevron.left.forwardslash.chevron.right", tip: "Inline Code (⌘E)", label: "Inline Code", action: #selector(EditorTextView.jotToggleCode(_:))),
-            Tool(id: "link", symbol: "link", tip: "Link… (⌘K)", label: "Link", action: #selector(EditorTextView.jotEditLink(_:))),
+            Tool(id: "strike", tip: "Strikethrough (⇧⌘X)", label: "Strikethrough", action: #selector(EditorTextView.jotToggleStrike(_:))),
+            Tool(id: "code", tip: "Inline Code (⌘E)", label: "Inline Code", action: #selector(EditorTextView.jotToggleCode(_:))),
+            Tool(id: "link", tip: "Link… (⌘K)", label: "Link", action: #selector(EditorTextView.jotEditLink(_:))),
         ]),
         ("jotdown.lists", "Lists", [
-            Tool(id: "bullet", symbol: "list.bullet", tip: "Bulleted List (⇧⌘8)", label: "Bulleted List", action: #selector(EditorTextView.jotToggleBullet(_:))),
-            Tool(id: "ordered", symbol: "list.number", tip: "Numbered List (⇧⌘7)", label: "Numbered List", action: #selector(EditorTextView.jotToggleOrdered(_:))),
-            Tool(id: "task", symbol: "checklist", tip: "Checklist (⇧⌘9)", label: "Checklist", action: #selector(EditorTextView.jotToggleTask(_:))),
+            Tool(id: "bullet", tip: "Bulleted List (⇧⌘8)", label: "Bulleted List", action: #selector(EditorTextView.jotToggleBullet(_:))),
+            Tool(id: "ordered", tip: "Numbered List (⇧⌘7)", label: "Numbered List", action: #selector(EditorTextView.jotToggleOrdered(_:))),
+            Tool(id: "task", tip: "Checklist (⇧⌘9)", label: "Checklist", action: #selector(EditorTextView.jotToggleTask(_:))),
         ]),
         ("jotdown.blocks", "Blocks", [
-            Tool(id: "quote", symbol: "text.quote", tip: "Quote (⇧⌘.)", label: "Quote", action: #selector(EditorTextView.jotToggleQuote(_:))),
-            Tool(id: "codeblock", symbol: "curlybraces", tip: "Code Block (⌥⌘C)", label: "Code Block", action: #selector(EditorTextView.jotToggleCodeBlock(_:))),
-            Tool(id: "table", symbol: "tablecells", tip: "Insert Table (⌃⌘T)", label: "Table", action: #selector(EditorTextView.jotInsertTable(_:))),
-            Tool(id: "image", symbol: "photo", tip: "Insert Image… (⇧⌘I)", label: "Image", action: #selector(EditorTextView.jotInsertImage(_:))),
+            Tool(id: "quote", tip: "Quote (⇧⌘.)", label: "Quote", action: #selector(EditorTextView.jotToggleQuote(_:))),
+            Tool(id: "codeblock", tip: "Code Block (⌥⌘C)", label: "Code Block", action: #selector(EditorTextView.jotToggleCodeBlock(_:))),
+            Tool(id: "table", tip: "Insert Table (⌃⌘T)", label: "Table", action: #selector(EditorTextView.jotInsertTable(_:))),
+            Tool(id: "video", tip: "Insert YouTube Video… (⌃⌘Y)", label: "YouTube Video", action: #selector(EditorTextView.jotInsertVideo(_:))),
+            Tool(id: "image", tip: "Insert Image… (⇧⌘I)", label: "Image", action: #selector(EditorTextView.jotInsertImage(_:))),
         ]),
     ]
     static let styleNames = ["Body", "Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5", "Heading 6"]
@@ -69,6 +71,7 @@ final class FormatToolbar: NSObject, NSToolbarDelegate {
                 m.tag = i
                 m.target = self
                 m.action = #selector(styleChosen(_:))
+                m.image = NSImage(systemSymbolName: i == 0 ? MenuIcons.name(for: #selector(EditorTextView.jotSetParagraph(_:)))! : MenuIcons.headingSymbol(i), accessibilityDescription: name)
                 menu.addItem(m)
             }
             item.menu = menu

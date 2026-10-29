@@ -111,6 +111,7 @@ enum MainMenu {
             fmt("Quote", "jotToggleQuote:", ".", [.command, .shift]),
             fmt("Code Block", "jotToggleCodeBlock:", "c", [.command, .option]),
             fmt("Insert Image…", "jotInsertImage:", "i", [.command, .shift]),
+            fmt("Insert YouTube Video…", "jotInsertVideo:", "y", [.command, .control]),
             .separator(),
             submenu("Table", [
                 fmt("Insert Table", "jotInsertTable:", "t", [.command, .control]),
@@ -171,6 +172,7 @@ enum MainMenu {
         main.addItem(helpItem)
         NSApp.helpMenu = helpMenu
 
+        MenuIcons.decorate(main)      // ไอคอนจากตารางกลาง (เมนูระบบไม่อยู่ในตาราง จึงไม่เปลี่ยน)
         return main
     }
 }

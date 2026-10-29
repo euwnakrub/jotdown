@@ -213,7 +213,10 @@ extension EditorTextView {
         case #selector(jotIndent(_:)), #selector(jotOutdent(_:)): return blockKindAtCaret.isList
         case #selector(jotToggleQuote(_:)): on(isSelection { $0 == .quote }); return true
         case #selector(jotToggleCodeBlock(_:)): on(isSelection { $0.isCode }); return true
+        case #selector(jotSetCodeLanguage(_:)): return true
         case #selector(jotOpenLink(_:)), #selector(jotCopyLinkAddress(_:)), #selector(jotRemoveLink(_:)): return linkHitAtSelection() != nil
+        case #selector(jotInsertVideo(_:)): return !blockKindAtCaret.isCodeLike && !blockKindAtCaret.isTableCell
+        case #selector(jotPlayVideo(_:)), #selector(jotOpenVideoInYouTube(_:)), #selector(jotCopyVideoLink(_:)): return selectedVideo() != nil
         case #selector(jotInsertImage(_:)): return !blockKindAtCaret.isCodeLike
         case #selector(jotToggleCheckOrExit(_:)):
             let k = blockKindAtCaret

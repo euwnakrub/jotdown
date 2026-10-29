@@ -7,6 +7,9 @@ final class PromptSheet: NSObject {
     let window: NSWindow
     let field = NSTextField()
     private var completion: ((Result) -> Void)?
+    /// ตรวจข้อความก่อนปิด: คืนข้อความ error (แสดงใต้ช่อง ไม่ปิด sheet) หรือ nil ถ้าใช้ได้
+    var validator: ((String) -> String?)?
+    private let errorLabel = NSTextField(labelWithString: "")
     private weak var parent: NSWindow?
 
     init(title: String, message: String, initial: String, placeholder: String = "", removeTitle: String? = nil) {
@@ -90,7 +93,25 @@ final class PromptSheet: NSObject {
         let c = completion; completion = nil
         c?(r)
     }
-    @objc private func okPressed() { finish(.ok(field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines))) }
+    @objc private func okPressed() {
+        let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let msg = validator?(text) { showError(msg); return }
+        finish(.ok(text))
+    }
+
+    func showError(_ message: String) {
+        errorLabel.stringValue = message
+        errorLabel.textColor = .systemRed
+        errorLabel.font = Fonts.body(.regular, size: 12)
+        errorLabel.isHidden = false
+        if errorLabel.superview == nil, let stack = window.contentView?.subviews.first as? NSStackView {
+            stack.insertArrangedSubview(errorLabel, at: 3)
+            stack.setCustomSpacing(4, after: field)
+            window.setContentSize(window.contentView!.fittingSize)
+        }
+    }
+    var errorText: String? { errorLabel.isHidden ? nil : errorLabel.stringValue }
+    func submitForTesting() { okPressed() }
     @objc private func cancelPressed() { finish(.cancel) }
     @objc private func removePressed() { finish(.remove) }
 }

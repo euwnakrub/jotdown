@@ -34,6 +34,34 @@ final class EditorLayoutManager: NSLayoutManager {
         return NSRect(x: x, y: geo.baseline - size + Theme.s(3), width: size, height: size)
     }
 
+    // MARK: - ป้ายภาษาของกล่องโค้ด (มุมบนขวา คลิกเพื่อเลือกภาษา)
+    static let labelPadding: CGFloat = 6
+
+    static func languageTitle(_ info: String) -> String {
+        guard let canon = SyntaxHighlighter.canonical(info) else { return "Plain Text" }
+        if let m = SyntaxHighlighter.menuLanguages.first(where: { $0.id == canon }) { return m.title }
+        return info.split(separator: " ").first.map(String.init) ?? info
+    }
+
+    private func languageLabel(forParagraphAt loc: Int, geo: Geometry) -> (rect: NSRect, text: NSAttributedString)? {
+        guard let storage = textStorage, let container = textContainers.first, case .codeBlock(let lang) = storage.blockKind(at: loc) else { return nil }
+        let text = NSAttributedString(string: Self.languageTitle(lang) + " ▾", attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: Theme.s(10.5), weight: .regular), .foregroundColor: Palette.secondaryText])
+        let w = text.size().width + Self.labelPadding * 2
+        let top = geo.minY - 8 - Theme.codeHeaderHeight
+        let h = Theme.codeHeaderHeight + 4
+        return (NSRect(x: container.size.width - Theme.codePadding + 4 - w, y: top + 2, width: w, height: h), text)
+    }
+
+    /// ตำแหน่งป้ายภาษา (พิกัด text container) ใช้ทั้งวาดและ hit test
+    func languageLabelRect(forParagraphAt charIndex: Int) -> NSRect? {
+        guard let storage = textStorage, storage.length > 0 else { return nil }
+        let ns = storage.string as NSString
+        let pr = ns.paragraphRange(for: NSRange(location: min(charIndex, ns.length - 1), length: 0))
+        guard let geo = geometry(for: pr) else { return nil }
+        return languageLabel(forParagraphAt: pr.location, geo: geo)?.rect
+    }
+
     private func orderedNumber(at start: Int, level: Int, storage: NSTextStorage) -> Int {
         let ns = storage.string as NSString
         var count = 1
@@ -49,23 +77,46 @@ final class EditorLayoutManager: NSLayoutManager {
         return count
     }
 
+    /// เลือกครอบเนื้อหาทั้งช่อง (ไม่นับตัวขึ้นบรรทัดท้ายย่อหน้า) และคลุมมากกว่าเนื้อหาของช่องนั้นเอง = เลือกหลายช่อง
+    static func selectionCoversCell(_ selected: NSRange, paragraph pr: NSRange, in ns: NSString) -> Bool {
+        var content = pr
+        if content.length > 0, ns.character(at: NSMaxRange(content) - 1) == 0x0A { content.length -= 1 }
+        guard NSMaxRange(selected) >= NSMaxRange(content), selected.location <= content.location else { return false }
+        // เลือกแค่เนื้อหาของช่องเดียวพอดี = เลือกข้อความธรรมดา ไม่ใช่เลือกช่อง
+        return selected.location < content.location || NSMaxRange(selected) > NSMaxRange(content)
+    }
+
+    /// พื้นที่ฟิลล์ของเซลล์: ตัด margin (ระยะนอกเส้นขอบ เช่นเหนือหัวตาราง/ใต้แถวสุดท้าย) และความหนาเส้นขอบออก
+    /// `boundsRect(for:)` รวม margin ไว้ด้วย ฟิลล์ตรง ๆ จึงล้นออกนอกเส้นขอบของเซลล์
+    static func cellFillRect(_ r: NSRect, block: NSTextTableBlock) -> NSRect {
+        func w(_ layer: NSTextBlock.Layer, _ e: NSRectEdge) -> CGFloat { block.width(for: layer, edge: e) }
+        let l = w(.margin, .minX) + w(.border, .minX)
+        let t = w(.margin, .minY) + w(.border, .minY)
+        let rr = w(.margin, .maxX) + w(.border, .maxX)
+        let b = w(.margin, .maxY) + w(.border, .maxY)
+        return NSRect(x: r.minX + l, y: r.minY + t, width: max(0, r.width - l - rr), height: max(0, r.height - t - b))
+    }
+
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
         guard let storage = textStorage, storage.length > 0, let container = textContainers.first else { return }
         let ns = storage.string as NSString
         let chars = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
 
-        // ตารางที่ถูกเลือก: ไฮไลต์พื้นเหลืองทั้งเซลล์
+        // ตารางที่ถูกเลือก: ไฮไลต์พื้นเหลืองทั้งเซลล์ เฉพาะเซลล์ที่เนื้อหาถูกเลือกครบทั้งช่อง (เลือกหลายช่อง/ทั้งตาราง)
+        // เลือกแค่บางส่วนในช่องเดียวให้ใช้ไฮไลต์ข้อความปกติของระบบ ไม่ฟิลล์ทั้งช่อง
         if let tv = firstTextView, tv.selectedRange().length > 0 {
-            let sel = NSIntersectionRange(tv.selectedRange(), chars)
+            let selected = tv.selectedRange()
+            let sel = NSIntersectionRange(selected, chars)
             var q = sel.location
             while sel.length > 0, q < NSMaxRange(sel) {
                 let pr = ns.paragraphRange(for: NSRange(location: q, length: 0))
                 q = NSMaxRange(pr)
                 guard storage.blockKind(at: pr.location).isTableCell,
                       let block = (storage.attribute(.paragraphStyle, at: pr.location, effectiveRange: nil) as? NSParagraphStyle)?.textBlocks.first as? NSTextTableBlock else { continue }
+                guard Self.selectionCoversCell(selected, paragraph: pr, in: ns) else { continue }
                 let g = glyphRange(forCharacterRange: pr, actualCharacterRange: nil)
-                let r = boundsRect(for: block, glyphRange: g).offsetBy(dx: origin.x, dy: origin.y)
+                let r = Self.cellFillRect(boundsRect(for: block, glyphRange: g), block: block).offsetBy(dx: origin.x, dy: origin.y)
                 Palette.selection.setFill()
                 r.fill()
             }
@@ -103,9 +154,13 @@ final class EditorLayoutManager: NSLayoutManager {
             let ox = origin.x, oy = origin.y
             switch kind {
             case .codeBlock, .raw:
-                let r = NSRect(x: ox, y: oy + geo.minY - 8, width: container.size.width, height: geo.maxY - geo.minY + 16)
+                let hh = kind.isCode ? Theme.codeHeaderHeight : 0
+                let r = NSRect(x: ox, y: oy + geo.minY - 8 - hh, width: container.size.width, height: geo.maxY - geo.minY + 16 + hh)
                 Palette.codeBackground.setFill()
                 NSBezierPath(roundedRect: r, xRadius: 6, yRadius: 6).fill()
+                if kind.isCode, let l = languageLabel(forParagraphAt: pr.location, geo: geo) {
+                    l.text.draw(at: NSPoint(x: l.rect.minX + ox + Self.labelPadding, y: l.rect.minY + oy + (l.rect.height - l.text.size().height) / 2))
+                }
             case .quote:
                 var bottom = geo.maxY
                 if NSMaxRange(pr) < ns.length, storage.blockKind(at: NSMaxRange(pr)) == .quote { bottom += 4 }

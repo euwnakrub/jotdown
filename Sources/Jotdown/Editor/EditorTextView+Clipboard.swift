@@ -71,6 +71,12 @@ extension EditorTextView {
             if let s = string { insertText(s.replacingOccurrences(of: "\r\n", with: "\n"), replacementRange: sel) }
             return
         }
+        if sel.length == 0, kind == .paragraph, !forcePlain, let s = string?.trimmingCharacters(in: .whitespacesAndNewlines), !s.contains(where: { $0 == " " || $0 == "\n" }),
+           let v = Self.makeVideo(from: s), contentRange(of: paragraphRange(containing: sel.location)).length == 0 {
+            insertVideo(v)
+            finishNewParagraph(.paragraph)
+            return
+        }
         if sel.length > 0, let s = string?.trimmingCharacters(in: .whitespacesAndNewlines), Self.isURL(s) {
             applyLink(s, in: sel)
             return

@@ -68,7 +68,15 @@ enum MarkdownParser {
         case let h as Heading:
             return [ParsedBlock(kind: .heading(h.level), segments: segments(of: h))]
         case let p as Paragraph:
-            return [ParsedBlock(kind: .paragraph, segments: segments(of: p))]
+            let segs = segments(of: p)
+            // ย่อหน้าที่มีแค่ลิงก์ YouTube อย่างเดียว (URL เปล่า / [ชื่อ](url) / <url>) = การ์ดวิดีโอ; เก็บข้อความต้นฉบับไว้เขียนกลับ
+            if raw.count == 1, segs.count == 1, let link = segs[0].link, segs[0].image == nil, segs[0].wiki == nil, segs[0].video == nil,
+               YouTubeLink.parse(link) != nil {
+                let src = raw[0].trimmingCharacters(in: .whitespaces)
+                let titled = src.hasPrefix("[") ? segs[0].text : nil
+                return [ParsedBlock(kind: .paragraph, segments: [InlineSegment(text: imageCharacter, style: [], link: link, video: VideoRef(raw: src, url: link, title: titled))])]
+            }
+            return [ParsedBlock(kind: .paragraph, segments: segs)]
         case let t as Markdown.Table:
             var rows: [[[InlineSegment]]] = [t.head.children.map { segments(of: $0, inCell: true) }]
             for r in t.body.children { rows.append(r.children.map { segments(of: $0, inCell: true) }) }
@@ -200,7 +208,7 @@ enum MarkdownParser {
     private static func merged(_ segs: [InlineSegment]) -> [InlineSegment] {
         var out: [InlineSegment] = []
         for s in segs where !s.text.isEmpty {
-            if var last = out.last, last.image == nil, s.image == nil, last.wiki == nil, s.wiki == nil, last.style == s.style, last.link == s.link, !s.style.contains(.hardBreak) {
+            if var last = out.last, last.image == nil, s.image == nil, last.wiki == nil, s.wiki == nil, last.video == nil, s.video == nil, last.style == s.style, last.link == s.link, !s.style.contains(.hardBreak) {
                 last.text += s.text; out[out.count - 1] = last
             } else { out.append(s) }
         }
@@ -215,6 +223,7 @@ enum MarkdownParser {
             a[.attachment] = ImageAttachment(ref: img)
         }
         if let w = s.wiki { a[.jotWiki] = w }
+        if let v = s.video { a[.jotVideo] = v.encoded; a[.attachment] = VideoAttachment(ref: v) }
         return a
     }
 
@@ -257,7 +266,18 @@ enum MarkdownParser {
             if i > 0 {
                 append("\n", Theme.attributes(for: blocks[i - 1].kind, spacing: Theme.gap(after: blocks[i - 1].kind, next: b.kind), table: tables[i - 1]))
             }
-            for s in b.segments { append(s.text, attributes(for: b.kind, segment: s, spacing: gap, table: tables[i])) }
+            for s in b.segments {
+                let attrs = attributes(for: b.kind, segment: s, spacing: gap, table: tables[i])
+                if case .codeBlock(let lang) = b.kind, s.image == nil, s.video == nil {
+                    // กล่องโค้ด: แบ่งตาม token เพื่อใส่สี syntax (ข้อความไม่เปลี่ยน)
+                    let ns = s.text as NSString
+                    for (r, kind) in SyntaxHighlighter.runs(for: s.text, language: lang) {
+                        var a = attrs
+                        if let kind { a[.foregroundColor] = Palette.syntax(kind) }
+                        append(ns.substring(with: r), a)
+                    }
+                } else { append(s.text, attrs) }
+            }
         }
         if terminated, let last = blocks.last { append("\n", Theme.attributes(for: last.kind, spacing: Theme.gap(after: last.kind, next: nil), table: tables[blocks.count - 1])) }
         let out = NSMutableAttributedString(string: text)

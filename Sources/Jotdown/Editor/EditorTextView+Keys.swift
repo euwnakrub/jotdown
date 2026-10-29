@@ -153,6 +153,16 @@ extension EditorTextView {
             moveVertically(by: 1)
             return
         case .paragraph:
+            if sel.location >= NSMaxRange(content), content.length >= 11, storage.attribute(.jotVideo, at: content.location, effectiveRange: nil) == nil {
+                let text = nsString.substring(with: content)
+                if !text.contains(" "), let v = Self.makeVideo(from: text) {
+                    replaceRange(content, with: videoAttributedString(v), selection: NSRange(location: content.location + 1, length: 0))
+                    setSelectedRange(NSRange(location: content.location + 1, length: 0))
+                    super.insertNewline(sender)
+                    finishNewParagraph(.paragraph)
+                    return
+                }
+            }
             if sel.location >= NSMaxRange(content), content.length >= 2, let m = tableModelFromTypedRow(nsString.substring(with: content)) {
                 placeTable(m, replacing: pr, selectCell: (1, 0))
                 return

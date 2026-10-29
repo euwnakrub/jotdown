@@ -33,6 +33,8 @@ enum Theme {
     static var listIndent: CGFloat { s(22) }
     static var quoteIndent: CGFloat { s(16) }
     static var codePadding: CGFloat { s(12) }
+    /// แถบด้านบนกล่องโค้ดสำหรับป้ายภาษา (กล่องโค้ดสูงขึ้นเท่านี้)
+    static var codeHeaderHeight: CGFloat { s(14) }
 
     static let columnMaxWidth: CGFloat = 720
     static let columnMinMargin: CGFloat = 24
@@ -126,7 +128,7 @@ enum Theme {
             p.firstLineHeadIndent = codePadding
             p.headIndent = codePadding
             p.tailIndent = -codePadding
-            p.paragraphSpacingBefore = s(10)
+            p.paragraphSpacingBefore = s(10) + (kind.isCode ? codeHeaderHeight : 0)
             p.paragraphSpacing = s(10)
         case .thematicBreak:
             p.minimumLineHeight = body
@@ -205,7 +207,8 @@ enum Theme {
 extension NSMutableAttributedString {
     /// คำนวณ attribute ที่แสดงผลใหม่ให้ทุกย่อหน้าที่ช่วง `range` แตะ: ชนิดบล็อกตามตัวอักษรแรกของย่อหน้า
     /// inline style (`.jotInline`/`.jotLink`) คงไว้ ส่วนฟอนต์/สี/ย่อหน้าคำนวณจาก Theme
-    func restyleParagraphs(in range: NSRange) {
+    /// `highlight: false` ใช้ตอนอยู่ใน willProcessEditing: ห้ามเปลี่ยนสี syntax ตรงนั้น (editedRange จะโตแล้วเคอร์เซอร์เลื่อน) ให้ didChangeText ทำหลังแก้ไขเสร็จ
+    func restyleParagraphs(in range: NSRange, highlight: Bool = true) {
         guard length > 0 else { return }
         let ns = string as NSString
         let loc = min(range.location, ns.length)
@@ -213,12 +216,12 @@ extension NSMutableAttributedString {
         var p = target.location
         while p < NSMaxRange(target) {
             let pr = ns.paragraphRange(for: NSRange(location: p, length: 0))
-            restyleOne(pr)
+            restyleOne(pr, highlight: highlight)
             p = NSMaxRange(pr)
         }
     }
 
-    private func restyleOne(_ pr: NSRange) {
+    private func restyleOne(_ pr: NSRange, highlight: Bool) {
         let kind = blockKind(at: pr.location)
         var contentEnd = NSMaxRange(pr)
         let ns = string as NSString
@@ -233,9 +236,12 @@ extension NSMutableAttributedString {
         if contentEnd > pr.location {
             enumerateAttributes(in: NSRange(location: pr.location, length: contentEnd - pr.location), options: []) { attrs, r, _ in
                 var want = Theme.attributes(for: kind, inline: InlineStyle(rawValue: (attrs[.jotInline] as? Int) ?? 0), link: attrs[.jotLink] as? String, spacing: spacing, table: table)
+                // สี syntax ของกล่องโค้ดคำนวณแยกหลังจากนี้ (ไม่รีเซ็ตเป็นสีข้อความทุกครั้งที่พิมพ์)
+                if kind.isCode, let c = attrs[.foregroundColor] { want[.foregroundColor] = c }
                 if let a = attrs[.attachment] { want[.attachment] = a }
                 if let j = attrs[.jotImage] { want[.jotImage] = j }
                 if let w = attrs[.jotWiki] { want[.jotWiki] = w }
+                if let v = attrs[.jotVideo] { want[.jotVideo] = v }
                 if !(attrs as NSDictionary).isEqual(to: want) { updates.append((r, want)) }
             }
         }
@@ -245,6 +251,26 @@ extension NSMutableAttributedString {
             if !(attributes(at: contentEnd, effectiveRange: nil) as NSDictionary).isEqual(to: want) { updates.append((r, want)) }
         }
         for (r, a) in updates { setAttributes(a, range: r) }
+        if highlight, case .codeBlock(let lang) = kind, contentEnd > pr.location { applySyntaxColors(in: NSRange(location: pr.location, length: contentEnd - pr.location), language: lang) }
+    }
+
+    /// ระบายสีโค้ดทั้งกล่อง (เฉพาะ attribute `.foregroundColor` ที่ต่างจริง) — ไม่แตะข้อความ/markdown ที่บันทึก
+    func applySyntaxColors(in range: NSRange, language: String) {
+        let text = (string as NSString).substring(with: range)
+        let runs = SyntaxHighlighter.runs(for: text, language: language)
+        let base = range.location
+        for (r, kind) in runs {
+            let color = kind.map { Palette.syntax($0) } ?? Palette.text
+            let abs = NSRange(location: base + r.location, length: r.length)
+            var pos = abs.location
+            while pos < NSMaxRange(abs) {
+                var eff = NSRange(location: 0, length: 0)
+                let cur = attribute(.foregroundColor, at: pos, longestEffectiveRange: &eff, in: abs) as? NSColor
+                let end = min(NSMaxRange(eff), NSMaxRange(abs))
+                if cur == nil || !(cur! === color) { addAttribute(.foregroundColor, value: color, range: NSRange(location: pos, length: end - pos)) }
+                pos = end
+            }
+        }
     }
 
     /// ตั้งชนิดบล็อกให้ย่อหน้าทั้งหมดในช่วง แล้ว restyle (inline style คงไว้ถ้าชนิดใหม่รองรับ)
@@ -287,7 +313,19 @@ enum Palette {
     static let accentHex = Pair(light: 0xF2B21B, dark: 0xF5C542)       // เหลืองอำพัน
     static let caretHex = Pair(light: 0xD99A00, dark: 0xF5C542)
     static let selectionHex = Pair(light: 0xF8DC85, dark: 0x6B5316)    // พื้นข้อความที่เลือก (ข้อความยังอ่านชัด)
-    static let codeBackgroundHex = Pair(light: 0xF3EDDA, dark: 0x2D2921)
+    static let codeBackgroundHex = Pair(light: 0xEFEBDF, dark: 0x2F2C26)       // เทาอมเหลืองนิด ๆ (inline code ใช้สีเดียวกัน)
+    /// สี syntax highlighting (คู่ light/dark) ต้องอ่านง่ายบน `codeBackgroundHex` (เทสต์วัด contrast)
+    static func syntaxHex(_ k: TokenKind) -> Pair {
+        switch k {
+        case .keyword: return Pair(light: 0xA8350A, dark: 0xF28B5E)      // ส้มอิฐ
+        case .string: return Pair(light: 0x2E6B2E, dark: 0xA3CF76)       // เขียว
+        case .number: return Pair(light: 0x0F5F99, dark: 0x7DB9EE)       // ฟ้า
+        case .comment: return Pair(light: 0x757061, dark: 0x9C9482)      // เทาอุ่น
+        case .type: return Pair(light: 0x7B3A9E, dark: 0xCDA2EC)         // ม่วง
+        case .function: return Pair(light: 0x0B6670, dark: 0x5FCCC2)     // เขียวน้ำทะเล
+        case .attribute: return Pair(light: 0x8A5A00, dark: 0xF5C542)    // ทองอำพัน
+        }
+    }
     static let tableHeaderHex = Pair(light: 0xF5EEDA, dark: 0x2A261E)
     static let borderHex = Pair(light: 0xDDD3B8, dark: 0x3C372C)
     static let secondaryTextHex = Pair(light: 0x7A7160, dark: 0xA79F8D)
@@ -309,6 +347,8 @@ enum Palette {
     static let caret = color(caretHex)
     static let selection = color(selectionHex)
     static let codeBackground = color(codeBackgroundHex)
+    private static let syntaxColors: [TokenKind: NSColor] = Dictionary(uniqueKeysWithValues: TokenKind.allCases.map { ($0, color(syntaxHex($0))) })
+    static func syntax(_ k: TokenKind) -> NSColor { syntaxColors[k]! }
     static let tableHeader = color(tableHeaderHex)
     static let tableBorder = color(borderHex)
     static let rule = color(borderHex)
