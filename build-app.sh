@@ -27,16 +27,11 @@ cp "$BIN" "$APP/Contents/MacOS/$EXEC"
 mkdir -p "$APP/Contents/Resources/Fonts"
 cp "$ROOT"/Resources/Fonts/* "$APP/Contents/Resources/Fonts/"
 
-# ไอคอน: ใช้ Jotdown.iconset/ ที่ Euw ออกแบบเอง (ที่ราก repo) ถ้ามี
+# ไอคอน: Jotdown.iconset/ ที่ Euw ออกแบบเอง (ที่ราก repo)
 #   ปรับขนาดให้เท่าไอคอน Mac อื่น (รูปทรง 824/1024 วางกลาง) ด้วย scripts/fit-icon.swift ไม่แก้ไฟล์ต้นฉบับ
-# ไม่มี = วาดด้วยโค้ด (scripts/make-icon.swift) แบบเดิม
 ICONSET="$ROOT/build/app.iconset"
 rm -rf "$ICONSET"
-if [ -f "$ROOT/Jotdown.iconset/icon_512x512@2x.png" ]; then
-  swift "$ROOT/scripts/fit-icon.swift" "$ROOT/Jotdown.iconset/icon_512x512@2x.png" "$ICONSET"
-else
-  swift "$ROOT/scripts/make-icon.swift" "$ICONSET" "$ROOT/Resources/Fonts" >/dev/null
-fi
+swift "$ROOT/scripts/fit-icon.swift" "$ROOT/Jotdown.iconset/icon_512x512@2x.png" "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 cp "$ICONSET/icon_512x512@2x.png" "$ROOT/build/icon-1024.png"
 

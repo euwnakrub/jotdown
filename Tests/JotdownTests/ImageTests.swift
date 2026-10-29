@@ -271,22 +271,6 @@ final class FakeImageProtocol: URLProtocol {
         #expect(after(st, 0) == 4, "รายการก่อนหน้าต้องปรับเป็นระยะในลิสต์ ได้ \(after(st, 0))")
     }
 
-    @Test func iconScriptProducesAllSizes() throws {
-        let out = try tempDir().appendingPathComponent("t.iconset"); defer { try? FileManager.default.removeItem(at: out.deletingLastPathComponent()) }
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        p.arguments = [projectRoot.appendingPathComponent("scripts/make-icon.swift").path, out.path, projectRoot.appendingPathComponent("Resources/Fonts").path]
-        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
-        try p.run(); p.waitUntilExit()
-        #expect(p.terminationStatus == 0)
-        let files = try FileManager.default.contentsOfDirectory(atPath: out.path).sorted()
-        #expect(files.count == 10)
-        for (n, px) in [("icon_16x16.png", 16), ("icon_32x32@2x.png", 64), ("icon_512x512@2x.png", 1024)] {
-            let rep = NSBitmapImageRep(data: try Data(contentsOf: out.appendingPathComponent(n)))
-            #expect(rep?.pixelsWide == px, Comment(rawValue: n))
-        }
-    }
-
     // MARK: - snapshot
     func imageDoc(_ dir: URL) throws -> JotdownDocument {
         try makePNG(dir.appendingPathComponent("wide.png"), 1600, 700, color: .systemIndigo)
