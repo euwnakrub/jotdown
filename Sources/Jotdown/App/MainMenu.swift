@@ -134,6 +134,11 @@ enum MainMenu {
 
         // มุมมอง
         main.addItem(submenu("View", [
+            item("Zoom In", NSSelectorFromString("jotZoomIn:"), "+", [.command]),
+            { let i = item("Zoom In", NSSelectorFromString("jotZoomIn:"), "=", [.command]); i.isHidden = true; return i }(),
+            item("Zoom Out", NSSelectorFromString("jotZoomOut:"), "-", [.command]),
+            item("Actual Size", NSSelectorFromString("jotZoomReset:"), "0", [.command]),
+            .separator(),
             item("Hide Toolbar", NSSelectorFromString("toggleToolbarShown:"), "t", [.command, .option]),
             item("Customize Toolbar…", NSSelectorFromString("runToolbarCustomizationPalette:")),
             .separator(),

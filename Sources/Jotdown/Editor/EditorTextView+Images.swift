@@ -46,6 +46,7 @@ extension EditorTextView {
             lm.ensureLayout(forCharacterRange: r)
         }
         refreshWikiLinks()
+        scheduleTableLayoutCheck()
         needsDisplay = true
     }
 

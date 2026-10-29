@@ -232,6 +232,45 @@ extension EditorTextView {
         placeTable(TableModel.empty(rows: 3, cols: 3))
     }
 
+    // MARK: - ซ่อมการวางเซลล์ผิดคอลัมน์ของ NSTextTable
+    /// ตรวจว่าทุกเซลล์ที่ layout แล้วอยู่ในคอลัมน์ของตัวเอง (x ตรงกับเซลล์หัวตารางของคอลัมน์เดียวกัน)
+    /// สาเหตุที่พบ: เมื่อตารางอยู่นอกพื้นที่ที่มองเห็นและถูก layout ด้วย ensureLayout(forCharacterRange/glyphRange) (เช่นจาก scrollRangeToVisible)
+    /// NSTextTable วางเซลล์ของแถวที่เซลล์ต้นแถวสูงผิดคอลัมน์ ขณะที่ layout แบบ rect/usedRect ถูกต้อง
+    func tableLayoutIsConsistent() -> Bool {
+        guard let lm = layoutManager, storage.length > 0 else { return true }
+        let laidOut = lm.firstUnlaidCharacterIndex()
+        var columnX: [ObjectIdentifier: [Int: CGFloat]] = [:]
+        var consistent = true
+        storage.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: min(laidOut, storage.length)), options: []) { v, r, stop in
+            guard let b = (v as? NSParagraphStyle)?.textBlocks.first as? NSTextTableBlock, NSMaxRange(r) <= laidOut else { return }
+            let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+            guard g.length > 0 else { return }
+            let x = lm.boundsRect(for: b, glyphRange: g).minX
+            let id = ObjectIdentifier(b.table)
+            if b.startingRow == 0 { columnX[id, default: [:]][b.startingColumn] = x; return }
+            if let ref = columnX[id]?[b.startingColumn], abs(ref - x) > 1.5 { consistent = false; stop.pointee = true }
+        }
+        return consistent
+    }
+
+    /// ถ้าเซลล์ถูกวางผิด: ล้าง layout ทั้งเอกสารแล้ว layout ใหม่ด้วยเส้นทาง rect (`usedRect`) ซึ่งถูกต้อง
+    @discardableResult
+    func repairTableLayoutIfNeeded() -> Bool {
+        guard storage.length > 0, let lm = layoutManager, let tc = textContainer, !tableLayoutIsConsistent() else { return false }
+        lm.invalidateLayout(forCharacterRange: NSRange(location: 0, length: storage.length), actualCharacterRange: nil)
+        _ = lm.usedRect(for: tc)
+        needsDisplay = true
+        return true
+    }
+
+    /// ตรวจ/ซ่อมแบบหน่วงเวลา (รวมการแก้ไขถี่ ๆ)
+    func scheduleTableLayoutCheck() {
+        tableCheckWork?.cancel()
+        let w = DispatchWorkItem { [weak self] in self?.repairTableLayoutIfNeeded() }
+        tableCheckWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: w)
+    }
+
     // MARK: - เมนู Table
     @objc func jotSelectTable(_ s: Any?) { selectTable() }
     func selectTable() {

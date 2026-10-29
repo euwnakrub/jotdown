@@ -2,13 +2,37 @@ import AppKit
 
 /// ค่าคงที่ของหน้าตา + ตัวสร้าง attribute ของบล็อก/inline ทุกชนิด
 enum Theme {
-    static let bodySize: CGFloat = 16
+    // MARK: - ซูม (View > Zoom In/Out/Actual Size): คูณทุกขนาดของเนื้อหา; จำค่าไว้ใน UserDefaults ใช้กับทุกหน้าต่าง ไม่แตะไฟล์ .md
+    /// ตอนรันเทสต์ (JOTDOWN_TESTING) ใช้ key แยกและเริ่มที่ 100% เสมอ ไม่ให้ซูมค้างข้ามการรันหรือปนกับค่าของผู้ใช้
+    static let isTesting = ProcessInfo.processInfo.environment["JOTDOWN_TESTING"] != nil
+    static let zoomKey = isTesting ? "JotdownZoom.test" : "JotdownZoom"
+    static let zoomRange: ClosedRange<CGFloat> = 0.7...2.0
+    static let zoomStep: CGFloat = 0.1
+    nonisolated(unsafe) private static var _zoom: CGFloat = {
+        if isTesting { return 1 }
+        let v = CGFloat(UserDefaults.standard.double(forKey: zoomKey))
+        return v == 0 ? 1 : min(max(v, 0.7), 2.0)
+    }()
+    static var zoom: CGFloat { _zoom }
+    /// ตั้งค่าซูม (ปัดเป็นขั้น 10%) คืน true ถ้าค่าเปลี่ยน
+    @discardableResult
+    static func setZoom(_ z: CGFloat, persist: Bool = true) -> Bool {
+        let snapped = (min(max(z, zoomRange.lowerBound), zoomRange.upperBound) * 10).rounded() / 10
+        guard abs(snapped - _zoom) > 0.0001 else { return false }
+        _zoom = snapped
+        if persist { UserDefaults.standard.set(Double(snapped), forKey: zoomKey) }
+        return true
+    }
+    /// ขนาด (pt) ที่ปรับตามซูมและปัดเป็นจำนวนเต็ม (ตำแหน่งเซลล์ตาราง/เส้นต้องไม่เป็นเศษ)
+    static func s(_ v: CGFloat) -> CGFloat { (v * _zoom).rounded() }
+
+    static var bodySize: CGFloat { 14 * _zoom }
     static let bodyLineHeightMultiple: CGFloat = 1.6     // ความสูงบรรทัดขั้นต่ำ = ขนาดฟอนต์ x 1.6 (เผื่อสระบน-ล่างภาษาไทย)
     static let headingLineHeightMultiple: CGFloat = 1.35
     static let italicObliqueness: CGFloat = 0.15
-    static let listIndent: CGFloat = 24
-    static let quoteIndent: CGFloat = 18
-    static let codePadding: CGFloat = 14
+    static var listIndent: CGFloat { s(22) }
+    static var quoteIndent: CGFloat { s(16) }
+    static var codePadding: CGFloat { s(12) }
 
     static let columnMaxWidth: CGFloat = 720
     static let columnMinMargin: CGFloat = 24
@@ -20,14 +44,14 @@ enum Theme {
     /// (ขนาด, ระยะบน, ระยะล่าง, น้ำหนัก) ของหัวข้อแต่ละระดับ
     static func headingSpec(_ level: Int) -> (size: CGFloat, before: CGFloat, after: CGFloat, weight: Fonts.Weight) {
         switch level {
-        case 1: return (28, 28, 8, .semibold)
-        case 2: return (22, 24, 6, .semibold)
-        case 3: return (18, 20, 4, .semibold)
-        default: return (bodySize, 16, 4, .bold)
+        case 1: return (24 * _zoom, s(24), s(6), .semibold)
+        case 2: return (19 * _zoom, s(20), s(5), .semibold)
+        case 3: return (16 * _zoom, s(16), s(4), .semibold)
+        default: return (bodySize, s(14), s(4), .bold)
         }
     }
 
-    static var monoSize: CGFloat { bodySize - 1 }
+    static var monoSize: CGFloat { 12.5 * _zoom }
 
     // MARK: - ฟอนต์
     private static var fontCache: [String: NSFont] = [:]
@@ -38,7 +62,7 @@ enum Theme {
         let bold = inline.contains(.bold)
         var header = false
         if case .tableCell(let r, _, _) = kind { header = r == 0 }
-        let key = "\(kind.code.prefix(2))|\(kind.isHeading ? kind.code : "")|\(bold || header)|\(inline.contains(.code))"
+        let key = "\(_zoom)|\(kind.code.prefix(2))|\(kind.isHeading ? kind.code : "")|\(bold || header)|\(inline.contains(.code))"
         if let f = fontCache[key] { return f }
         let f: NSFont
         switch kind {
@@ -63,18 +87,18 @@ enum Theme {
     static func gap(after kind: BlockKind, next: BlockKind?) -> CGFloat? {
         func ordered(_ k: BlockKind) -> Bool { if case .ordered = k { return true } else { return false } }
         if kind.isList {
-            guard let n = next, n.isList else { return 6 }
-            if n.listLevel == 0, ordered(n) != ordered(kind) { return 10 }   // ลิสต์ใหม่ชนิดอื่น
-            return 4
+            guard let n = next, n.isList else { return s(5) }
+            if n.listLevel == 0, ordered(n) != ordered(kind) { return s(9) }   // ลิสต์ใหม่ชนิดอื่น
+            return s(3)
         }
-        if kind == .quote { return next == .quote ? 4 : 6 }
+        if kind == .quote { return next == .quote ? s(3) : s(5) }
         return nil
     }
 
     static func paragraphStyle(for kind: BlockKind, spacing: CGFloat? = nil) -> NSParagraphStyle {
         lock.lock(); defer { lock.unlock() }
-        var key: String
-        if let l = kind.listLevel { key = "list\(l)" } else if kind.isCode { key = "code" } else { key = kind.code }
+        var key: String = "\(_zoom)|"
+        if let l = kind.listLevel { key += "list\(l)" } else if kind.isCode { key += "code" } else { key += kind.code }
         if let sp = spacing { key += "|\(sp)" }
         if let s = styleCache[key] { return s }
         let p = NSMutableParagraphStyle()
@@ -90,31 +114,31 @@ enum Theme {
             p.minimumLineHeight = body
             p.firstLineHeadIndent = listIndent * (l + 1)
             p.headIndent = listIndent * (l + 1)
-            p.paragraphSpacing = 4
+            p.paragraphSpacing = s(4)
         case .quote:
             p.minimumLineHeight = body
             p.firstLineHeadIndent = quoteIndent
             p.headIndent = quoteIndent
-            p.paragraphSpacingBefore = 2
-            p.paragraphSpacing = 6
+            p.paragraphSpacingBefore = s(2)
+            p.paragraphSpacing = s(6)
         case .codeBlock, .raw:
             p.minimumLineHeight = (monoSize * 1.5).rounded()
             p.firstLineHeadIndent = codePadding
             p.headIndent = codePadding
             p.tailIndent = -codePadding
-            p.paragraphSpacingBefore = 12
-            p.paragraphSpacing = 12
+            p.paragraphSpacingBefore = s(10)
+            p.paragraphSpacing = s(10)
         case .thematicBreak:
             p.minimumLineHeight = body
-            p.paragraphSpacingBefore = 8
-            p.paragraphSpacing = 8
+            p.paragraphSpacingBefore = s(8)
+            p.paragraphSpacing = s(8)
         case .tableCell:
             p.minimumLineHeight = body
             p.paragraphSpacing = 0
         case .paragraph:
             p.minimumLineHeight = body
-            p.paragraphSpacingBefore = 4
-            p.paragraphSpacing = 6
+            p.paragraphSpacingBefore = s(3)
+            p.paragraphSpacing = s(5)
         }
         if let sp = spacing { p.paragraphSpacing = sp }
         styleCache[key] = p
@@ -124,7 +148,7 @@ enum Theme {
     /// paragraph style ของเซลล์ตาราง (NSTextTableBlock) แคชไว้ที่ตัวตารางเพื่อให้เทียบเท่ากันได้
     static func tableStyle(_ kind: BlockKind, _ table: NSTextTable?) -> NSParagraphStyle? {
         guard case .tableCell(let r, let c, let a) = kind, let t = table as? JotTable else { return nil }
-        let key = "\(r).\(c).\(a).\(t.rowCount)"
+        let key = "\(_zoom)|\(r).\(c).\(a).\(t.rowCount)"
         if let s = t.styleCache[key] { return s }
         let b = NSTextTableBlock(table: t, startingRow: r, rowSpan: 1, startingColumn: c, columnSpan: 1)
         // เส้นขอบ: ใช้ collapsesBorders=false (แบบ collapse ทำให้เส้นขวานอกสุดหายเมื่อตารางกว้างเท่า container)
@@ -135,11 +159,12 @@ enum Theme {
             b.setWidth(w, type: .absoluteValueType, for: .border, edge: edge)
         }
         b.setBorderColor(Palette.tableBorder)
-        b.setWidth(7, type: .absoluteValueType, for: .padding)
+        b.setWidth(s(6), type: .absoluteValueType, for: .padding)
         b.verticalAlignment = .topAlignment
+        b.setValue(100 / CGFloat(max(t.numberOfColumns, 1)), type: .percentageValueType, for: .width)
         if r == 0 { b.backgroundColor = Palette.tableHeader }
-        if r == 0 { b.setWidth(8, type: .absoluteValueType, for: .margin, edge: .minY) }
-        if r == t.rowCount - 1 { b.setWidth(12, type: .absoluteValueType, for: .margin, edge: .maxY) }
+        if r == 0 { b.setWidth(s(6), type: .absoluteValueType, for: .margin, edge: .minY) }
+        if r == t.rowCount - 1 { b.setWidth(s(10), type: .absoluteValueType, for: .margin, edge: .maxY) }
         let p = NSMutableParagraphStyle()
         p.minimumLineHeight = (bodySize * bodyLineHeightMultiple).rounded()
         p.paragraphSpacing = 0
@@ -236,11 +261,14 @@ extension NSMutableAttributedString {
 
 /// ตารางของเรา: เก็บจำนวนแถว + แคช paragraph style ของเซลล์
 final class JotTable: NSTextTable {
+    /// (เทสต์ทดลองเท่านั้น) ปิดเพื่อทดสอบว่า automatic layout พังจริง
+    nonisolated(unsafe) static var useFixedLayout = true
     var rowCount = 1
     var styleCache: [String: NSParagraphStyle] = [:]
     override init() {
         super.init()
-        layoutAlgorithm = .automaticLayoutAlgorithm
+        // fixed: ความกว้างคอลัมน์เท่ากันแน่นอน (automatic ทำให้เซลล์ถัดไปถูกวางผิดคอลัมน์เมื่อแถวมีเนื้อหาสูง/โค้ดที่ตัดบรรทัดไม่ได้)
+        layoutAlgorithm = Self.useFixedLayout ? .fixedLayoutAlgorithm : .automaticLayoutAlgorithm
         collapsesBorders = false
         setContentWidth(100, type: .percentageValueType)
     }

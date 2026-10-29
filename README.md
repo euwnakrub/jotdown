@@ -32,16 +32,19 @@
 | **Obsidian** | `[[wikilinks]]`, `![[embedded images]]` and front matter work and are saved back exactly as written |
 | **Toolbar** | One-click buttons for every format. The buttons you are using light up |
 | **Look** | Warm paper theme with an amber accent, IBM Plex Sans Thai fonts, light and dark mode |
+| **Zoom** | View → Zoom In / Zoom Out / Actual Size (70%–200%, remembered). Only the display changes, never the file |
 | **Windows** | Multiple windows and tabs, file versions, find (⌘F) |
 
 ## Download and install
 
 1. Download `Jotdown.zip` from the [Releases](../../releases) page and unzip it.
 2. Move **Jotdown.app** to your Applications folder.
-3. The first time you open it, **right-click the app and choose Open**, then click **Open** again.
-   Jotdown is not signed with an Apple Developer ID, so macOS asks you to confirm once.
+3. Open it. Jotdown is signed ad hoc and not notarized by Apple, so macOS blocks the first launch:
+   - **macOS 14 Sonoma:** right-click the app, choose **Open**, then click **Open** again.
+   - **macOS 15 Sequoia or later:** right-click → Open no longer works. Open Jotdown once (it is blocked), then go to **System Settings → Privacy & Security**, scroll down to the message about Jotdown, click **Open Anyway** and enter your password.
+   - **Terminal alternative:** `xattr -dr com.apple.quarantine /Applications/Jotdown.app`
 
-Jotdown requires **macOS 14 Sonoma or later**.
+Jotdown requires **macOS 14 Sonoma or later** and runs on **Apple silicon Macs only** (M1 and later).
 
 ## Quick start
 
@@ -80,6 +83,7 @@ Type these at the start of a line and they turn into formatting. Press ⌘Z to u
 | Indent / Outdent list item | Tab / ⇧Tab |
 | Line break inside a list item | ⇧↩ |
 | Show / hide toolbar | ⌥⌘T |
+| Zoom in / Zoom out / Actual size | ⌘+ (or ⌘=) / ⌘− / ⌘0 |
 
 Lists behave like Notion's. Enter starts a new item. Enter on an empty item moves it out one level or ends the list. Backspace at the start of an item turns it into plain text.
 

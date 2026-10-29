@@ -3,6 +3,9 @@ import AppKit
 final class EditorTextView: NSTextView {
     /// ย่อหน้าว่างท้ายเอกสาร (ยังไม่มีตัวอักษรให้เก็บ attribute) จำชนิดบล็อกที่ตั้งใจไว้ตรงนี้
     var pendingEmptyBlock: (location: Int, kind: BlockKind)?
+    /// non-contiguous layout ทำให้ NSTextTable วางเซลล์ผิดคอลัมน์ จึงปิด (ดู README) — เปิดได้เฉพาะเพื่อทดลองในเทสต์
+    nonisolated(unsafe) static var useNonContiguousLayout = false
+    var tableCheckWork: DispatchWorkItem?
     var internalEdit = false
     /// ข้อความที่กำลังจะแทนที่ช่วงที่ shouldChangeText ตรวจอยู่ (ใช้ตอนลบตารางทั้งตารางแล้วพิมพ์ทับ)
     var pendingReplacement: String?
@@ -21,7 +24,7 @@ final class EditorTextView: NSTextView {
     /// สร้าง TextKit 1 stack เอง (รองรับ attachment / NSTextTable ในขั้นหลัง)
     static func make(storage: NSTextStorage) -> EditorTextView {
         let layoutManager = EditorLayoutManager()
-        layoutManager.allowsNonContiguousLayout = true
+        layoutManager.allowsNonContiguousLayout = Self.useNonContiguousLayout
         let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
         container.widthTracksTextView = true
         container.lineFragmentPadding = 0
@@ -146,6 +149,7 @@ final class EditorTextView: NSTextView {
     override func didChangeText() {
         super.didChangeText()
         guard storage.length > 0 else { return }
+        scheduleTableLayoutCheck()
         let sel = selectedRange()
         let loc = min(sel.location, storage.length)
         var r = nsString.paragraphRange(for: NSRange(location: loc, length: min(sel.length, storage.length - loc)))

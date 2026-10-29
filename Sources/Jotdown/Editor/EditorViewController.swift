@@ -33,6 +33,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         linkBar = LinkBarController(editor: self)
 
         let nc = NotificationCenter.default
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        nc.addObserver(self, selector: #selector(scrolledForTables), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+        nc.addObserver(self, selector: #selector(zoomChanged), name: .jotdownZoomChanged, object: document)
         nc.addObserver(self, selector: #selector(imagesLoaded), name: .jotImageLoaded, object: nil)
         nc.addObserver(self, selector: #selector(willReload), name: .jotDocumentWillReload, object: document)
         nc.addObserver(self, selector: #selector(didReload), name: .jotDocumentDidReload, object: document)
@@ -45,6 +48,14 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         view.window?.makeFirstResponder(textView)
         textView.syncTypingAttributes()
         textView.refreshWikiLinks()
+        textView.scheduleTableLayoutCheck()
+        // dev: JOTDOWN_SCROLL_TO=<ข้อความ> เลื่อนไปข้อความนั้นหลังเปิด (ใช้ถ่ายภาพโดยไม่ต้องส่งคีย์/เมาส์)
+        if let t = ProcessInfo.processInfo.environment["JOTDOWN_SCROLL_TO"], !t.isEmpty {
+            let r = (document.textStorage.string as NSString).range(of: t)
+            if r.location != NSNotFound {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.textView.scrollRangeToVisible(NSRange(location: r.location + min(r.length + 400, 900), length: 1)) }
+            }
+        }
         toolbarController?.update()
         DispatchQueue.main.async { [weak self] in self?.toolbarController?.update() }
     }
@@ -60,6 +71,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textDidChange(_ notification: Notification) { linkBar?.textChanged() }
 
+    @objc private func zoomChanged() {
+        textView.syncTypingAttributes()
+        textView.layoutManager?.invalidateLayout(forCharacterRange: NSRange(location: 0, length: document.textStorage.length), actualCharacterRange: nil)
+        textView.needsDisplay = true
+        textView.scheduleTableLayoutCheck()
+    }
+    @objc private func scrolledForTables() { textView.scheduleTableLayoutCheck() }
     @objc private func imagesLoaded() { textView.refreshImages() }
 
     // MARK: - โหลดใหม่จากไฟล์ที่ถูกแก้ภายนอก: คงตำแหน่งเคอร์เซอร์/scroll

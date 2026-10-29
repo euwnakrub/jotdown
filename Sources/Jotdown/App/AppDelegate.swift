@@ -1,6 +1,6 @@
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var resignObserver: NSObjectProtocol?
 
     var jotDocuments: [JotdownDocument] { NSDocumentController.shared.documents.compactMap { $0 as? JotdownDocument } }
@@ -32,6 +32,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let w = doc.windowControllers.first?.window else { return }
         if let current { current.addTabbedWindow(w, ordered: .above) }
         w.makeKeyAndOrderFront(nil)
+    }
+
+    // MARK: - ซูม (View > Zoom In ⌘+ / Zoom Out ⌘− / Actual Size ⌘0)
+    @objc func jotZoomIn(_ sender: Any?) { Self.changeZoom(Theme.zoom + Theme.zoomStep) }
+    @objc func jotZoomOut(_ sender: Any?) { Self.changeZoom(Theme.zoom - Theme.zoomStep) }
+    @objc func jotZoomReset(_ sender: Any?) { Self.changeZoom(1) }
+
+    /// ตั้งซูมแล้วจัดรูปแบบเอกสารที่เปิดอยู่ทุกฉบับใหม่ (ไม่เปลี่ยนเนื้อหาไฟล์)
+    static func changeZoom(_ z: CGFloat) {
+        guard Theme.setZoom(z) else { return }
+        for case let doc as JotdownDocument in NSDocumentController.shared.documents { doc.reapplyStyles() }
+    }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        switch item.action {
+        case #selector(jotZoomIn(_:)): return Theme.zoom < Theme.zoomRange.upperBound - 0.001
+        case #selector(jotZoomOut(_:)): return Theme.zoom > Theme.zoomRange.lowerBound + 0.001
+        case #selector(jotZoomReset(_:)): return abs(Theme.zoom - 1) > 0.001
+        default: return true
+        }
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }

@@ -94,3 +94,21 @@
 - รูปที่ลาก/วางในเอกสารที่อยู่ใน vault และมี `![[` อยู่แล้ว → `![[ชื่อไฟล์]]` ไม่งั้นใช้ `![](…)` เหมือนเดิม
 - frontmatter `---` ต้นไฟล์ (ตรวจว่าเป็น YAML) เก็บเป็นบล็อก raw ไม่เสียเนื้อหา; callout `> [!note]`, tag `#tag`, checkbox ไม่ถูก escape ผิด (กฎ escape `[` แคบลง)
 - **ยังไม่รองรับ:** callout แบบพับ/สไตล์ (แสดงเป็น quote ธรรมดา), tag เป็นลิงก์, `^block-id`, `![[…]]` ของ PDF/เสียง/วิดีโอ (แสดงเป็นการ์ดโน้ต), ฝังเนื้อหาโน้ตจริง, `%%comment%%`, math `$…$`, Dataview, ช่วงของ `[[note#^id]]` — `ObsidianTests`
+
+### บั๊กตาราง: เซลล์ถูกวางผิดคอลัมน์ (2026-10-29)
+- อาการ (แอปจริง): บางแถว ข้อความของคอลัมน์ท้ายไปวาดซ้อนในคอลัมน์ก่อนหน้า ช่องเดิมว่างและเส้นขอบหาย — แถวที่คอลัมน์แรกสูงสุดมักพัง
+- **สาเหตุจริง:** `NSTextTable` (TextKit 1) วางเซลล์ของแถวผิดคอลัมน์ (block ของคอลัมน์ 3 ได้ rect เท่าคอลัมน์ 2) เมื่อตารางอยู่**นอกพื้นที่ที่มองเห็น**และถูก layout ด้วย `ensureLayout(forCharacterRange/glyphRange:)` (เช่นจาก `scrollRangeToVisible`, การย้ายเคอร์เซอร์); layout แบบ rect (`usedRect(for:)`, `ensureLayout(forBoundingRect:)`) ให้ผลถูก ตารางที่อยู่ในหน้าจอแรกไม่พัง; ตรวจแล้วไม่เกี่ยวกับ `NSTextBlock.isEqual`/การรวม attribute run, ไม่เกี่ยวกับ automatic vs fixed layout, ไม่เกี่ยวกับ inline code, และการ invalidate เฉพาะตารางแล้ว layout ใหม่ไม่ช่วย (ต้อง invalidate ทั้งเอกสารแล้ว layout ด้วยเส้นทาง rect)
+- **แก้ (`EditorTextView+Table.swift`):**
+  - `tableLayoutIsConsistent()` ตรวจว่า x ของทุกเซลล์ที่ layout แล้วตรงกับเซลล์หัวตารางของคอลัมน์เดียวกัน
+  - `repairTableLayoutIfNeeded()` ถ้าไม่ตรง: invalidate ทั้งเอกสารแล้ว `usedRect(for:)` (ทำงานเฉพาะเมื่อพัง)
+  - `scheduleTableLayoutCheck()` (หน่วง 0.12 วินาที) เรียกหลังโหลด, หลังแก้ไข (`didChangeText`), หลัง scroll, หลังโหลดรูป
+  - ปิด non-contiguous layout (ทำให้พังบ่อยขึ้น 2 เท่าในการทดลอง) และใช้ `fixedLayoutAlgorithm` + ความกว้างคอลัมน์ % เท่ากัน
+- พื้นหลัง inline code ที่ตัดบรรทัด วาดต่อบรรทัดพอดีข้อความ (เดิมบรรทัดแรกยืดเต็มช่อง) ใน `EditorLayoutManager`
+- เทสต์ (`TableLayoutTests`, ข้อมูลสังเคราะห์ ไม่ใช้ไฟล์ของใคร): ตรวจตำแหน่ง block/glyph จริงด้วย `boundsRect(for:)` เทียบคอลัมน์ — คอลัมน์ 1/2/3 สูงสุด, 2 และ 4 คอลัมน์, มี inline code, ตารางยาวใต้ขอบจอ (ต้องจำลองบั๊กเดิมได้ แล้วซ่อมแล้วถูก), หลังพิมพ์แก้ในเซลล์; snapshot `table-pipeline-*`, `table-longdoc-*`
+- `build/` เท่านั้นที่เก็บภาพของไฟล์จริง (ไม่ commit)
+
+### ฟอนต์เล็กลง + ซูม + README ติดตั้ง (2026-10-29)
+- ขนาดใน `Theme`: เนื้อความ 14pt, H1 24 / H2 19 / H3 16, H4–H6 = เนื้อความหนา, โค้ด 12.5pt; line height ขั้นต่ำ = ขนาด × 1.6 (หัวข้อ × 1.35); เว้นวรรคย่อหน้า/ลิสต์/quote/โค้ด, ย่อหน้าก่อน-หลัง, เยื้องลิสต์ 22, quote 16, padding โค้ด 12, bullet/เลข/checkbox 14 และ padding ตาราง 6 ปรับตาม; คอลัมน์สูงสุด 720pt คงเดิม
+- ซูม: `Theme.zoom` (0.7–2.0 ทีละ 0.1, `UserDefaults["JotdownZoom"]`) ทุกขนาดคูณผ่าน `Theme.s(_:)`; แคชฟอนต์/paragraph style/ตารางมี zoom ใน key; `AppDelegate.changeZoom` → `JotdownDocument.reapplyStyles()` จัดรูปแบบเอกสารที่เปิดอยู่ทุกฉบับใหม่ (ไม่เปลี่ยนไฟล์ ไม่ทริกเกอร์บันทึก) แล้วตรวจ layout ตาราง; เมนู View: Zoom In ⌘+ (และ ⌘= แบบซ่อน), Zoom Out ⌘−, Actual Size ⌘0 (disabled ที่ขอบช่วง) — `ZoomTests`; เทสต์คีย์ลัดไม่ชนเดิมครอบคลุม
+- เทสต์ตารางสังเคราะห์ (`TableLayoutTests`): ข้อความต้องไม่ลอกจากไฟล์ใคร; บั๊ก NSTextTable จำลองได้เมื่อคอลัมน์แรกสูงมาก (ประโยคไทยทั่วไปซ้ำ 3 ครั้ง) และตารางอยู่ใต้ขอบจอ ≥ ~60 ย่อหน้าก่อนตาราง — ประโยคสั้นกว่าไม่จำลองบั๊กได้ จึงใช้ `tallThai` และ `n ∈ {60, 80, 100}` (หลังเปลี่ยนฟอนต์ 14pt ตรวจซ้ำแล้วยังจำลองได้)
+- README: หัวข้อติดตั้งแก้ตาม Gatekeeper ของ macOS 15+ (Open Anyway / `xattr`) และ build เป็น arm64 อย่างเดียว (`lipo -archs` = arm64) จึงระบุ Apple silicon only

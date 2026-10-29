@@ -259,16 +259,16 @@ final class FakeImageProtocol: URLProtocol {
         let a = MarkdownParser.parse("- a\n- b\n\n1. c\n2. d\n\nย่อหน้า\n\n> q\n")
         let ns = a.string as NSString
         func idx(_ s: String) -> Int { ns.range(of: s).location }
-        #expect(after(a, idx("a")) == 4)          // ในลิสต์เดียวกัน
-        #expect(after(a, idx("b")) == 10)         // bullet -> ตัวเลข
-        #expect(after(a, idx("c")) == 4)
-        #expect(after(a, idx("d")) == 6)          // ลิสต์ -> ย่อหน้า (บวก before ของย่อหน้า = เท่าย่อหน้าปกติ)
+        #expect(after(a, idx("a")) == Theme.s(3))          // ในลิสต์เดียวกัน
+        #expect(after(a, idx("b")) == Theme.s(9))         // bullet -> ตัวเลข
+        #expect(after(a, idx("c")) == Theme.s(3))
+        #expect(after(a, idx("d")) == Theme.s(5))          // ลิสต์ -> ย่อหน้า (บวก before ของย่อหน้า = เท่าย่อหน้าปกติ)
         // แก้ไขแล้วระยะย่อหน้าตามบล็อกถัดไป
         let (doc, vc) = makeEditor("- a\n\nx\n")
         vc.textView.select(doc.textStorage.length)
         vc.textView.jotToggleBullet(nil)
         let st = doc.textStorage
-        #expect(after(st, 0) == 4, "รายการก่อนหน้าต้องปรับเป็นระยะในลิสต์ ได้ \(after(st, 0))")
+        #expect(after(st, 0) == Theme.s(3), "รายการก่อนหน้าต้องปรับเป็นระยะในลิสต์ ได้ \(after(st, 0))")
     }
 
     // MARK: - snapshot

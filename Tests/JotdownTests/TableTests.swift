@@ -359,13 +359,13 @@ import AppKit
         let scale = CGFloat(rep.pixelsWide) / tv.bounds.width
         let lm = tv.layoutManager!, tc = tv.textContainer!
         // ช่วงแนวตั้งของตาราง: จากเซลล์แรกถึงเซลล์สุดท้าย
-        var minY = CGFloat.greatestFiniteMagnitude, maxY: CGFloat = 0
+        var minY = CGFloat.greatestFiniteMagnitude, maxY: CGFloat = 0, maxX: CGFloat = 0
         tv.storage.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: tv.storage.length), options: []) { v, r, _ in
             guard let ps = v as? NSParagraphStyle, let b = ps.textBlocks.first as? NSTextTableBlock else { return }
             let rect = lm.boundsRect(for: b, glyphRange: lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil))
-            minY = min(minY, rect.minY); maxY = max(maxY, rect.maxY)
+            minY = min(minY, rect.minY); maxY = max(maxY, rect.maxY); maxX = max(maxX, rect.maxX)
         }
-        let edgeX = tv.textContainerOrigin.x + tc.size.width
+        let edgeX = tv.textContainerOrigin.x + maxX      // ขอบขวาจริงของตาราง (คอลัมน์สุดท้าย)
         let bg = rep.colorAt(x: 2, y: 2) ?? .white
         func differs(_ c: NSColor?) -> Bool {
             guard let c = c?.usingColorSpace(.sRGB), let b = bg.usingColorSpace(.sRGB) else { return false }

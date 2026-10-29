@@ -2,6 +2,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 extension Notification.Name {
+    static let jotdownZoomChanged = Notification.Name("JotdownZoomChanged")
     static let jotDocumentWillReload = Notification.Name("JotdownDocumentWillReload")
     static let jotDocumentDidReload = Notification.Name("JotdownDocumentDidReload")
 }
@@ -101,6 +102,17 @@ final class JotdownDocument: NSDocument, NSTextStorageDelegate {
             try? migrateUntitledAssets(to: url.deletingLastPathComponent())
         }
         super.save(to: url, ofType: typeName, for: saveOperation, completionHandler: completionHandler)
+    }
+
+    /// จัดรูปแบบทั้งเอกสารใหม่ตามธีม/ซูมปัจจุบัน (ไม่เปลี่ยนข้อความ ไม่ทริกเกอร์บันทึก)
+    func reapplyStyles() {
+        guard textStorage.length > 0 else { NotificationCenter.default.post(name: .jotdownZoomChanged, object: self); return }
+        isReloading = true
+        textStorage.beginEditing()
+        textStorage.restyleParagraphs(in: NSRange(location: 0, length: textStorage.length))
+        textStorage.endEditing()
+        isReloading = false
+        NotificationCenter.default.post(name: .jotdownZoomChanged, object: self)
     }
 
     // MARK: - เนื้อหา

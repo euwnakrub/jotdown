@@ -3,7 +3,7 @@ import AppKit
 /// วาง bullet / เลขลิสต์ / checkbox / เส้นแนวตั้งของ quote / พื้นกล่องโค้ด / เส้นคั่น / พื้นโค้ดในบรรทัด ด้วยตัวเอง
 /// ข้อความใน storage ไม่มีเครื่องหมายเหล่านี้เลย
 final class EditorLayoutManager: NSLayoutManager {
-    static let checkboxSize: CGFloat = 16
+    static var checkboxSize: CGFloat { Theme.s(14) }
 
     private struct Geometry { var first: NSRect; var firstUsed: NSRect; var lastUsed: NSRect; var baseline: CGFloat; var minY: CGFloat; var maxY: CGFloat }
 
@@ -31,7 +31,7 @@ final class EditorLayoutManager: NSLayoutManager {
         guard let level = kind.listLevel, let geo = geometry(for: pr) else { return nil }
         let size = Self.checkboxSize
         let x = CGFloat(level) * Theme.listIndent + (Theme.listIndent - size) / 2 + 1
-        return NSRect(x: x, y: geo.baseline - size + 3, width: size, height: size)
+        return NSRect(x: x, y: geo.baseline - size + Theme.s(3), width: size, height: size)
     }
 
     private func orderedNumber(at start: Int, level: Int, storage: NSTextStorage) -> Int {
@@ -76,10 +76,19 @@ final class EditorLayoutManager: NSLayoutManager {
         storage.enumerateAttribute(.jotInline, in: chars, options: []) { v, r, _ in
             guard let raw = v as? Int, InlineStyle(rawValue: raw).contains(.code), !storage.blockKind(at: r.location).isCode else { return }
             let g = self.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
-            self.enumerateEnclosingRects(forGlyphRange: g, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: container) { rect, _ in
-                var rr = rect.offsetBy(dx: origin.x, dy: origin.y)
+            // ต่อบรรทัด: พื้นพอดีข้อความของบรรทัดนั้น (เดิมบรรทัดที่ตัดไปต่อบรรทัดใหม่ยืดเต็มความกว้างช่อง)
+            self.enumerateLineFragments(forGlyphRange: g) { lineRect, used, _, fragGlyphs, _ in
+                let inter = NSIntersectionRange(fragGlyphs, g)
+                guard inter.length > 0 else { return }
+                var tight = NSRect.zero
+                self.enumerateEnclosingRects(forGlyphRange: inter, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: container) { r, stop in
+                    tight = tight == .zero ? r : tight.union(r)
+                }
+                guard tight.width > 0 else { return }
                 let h = Theme.monoSize + 6
-                rr = NSRect(x: rr.minX - 2, y: rr.midY - h / 2 + 1, width: rr.width + 4, height: h)
+                // ตำแหน่งแนวตั้งอิงเส้นฐานของข้อความ (บรรทัดที่มีรูปแทรกจะสูงกว่าปกติ ใช้กึ่งกลางบรรทัดไม่ได้)
+                let baseline = lineRect.minY + self.location(forGlyphAt: inter.location).y
+                let rr = NSRect(x: tight.minX + origin.x - 2, y: baseline + origin.y - Theme.monoSize * 0.78 - 3, width: tight.width + 4, height: h)
                 NSBezierPath(roundedRect: rr, xRadius: 4, yRadius: 4).fill()
             }
         }
@@ -107,9 +116,9 @@ final class EditorLayoutManager: NSLayoutManager {
                 NSRect(x: ox, y: oy + (geo.minY + geo.maxY) / 2 - 0.5, width: container.size.width, height: 1).fill()
             case .bullet(let level):
                 Palette.text.setFill()
-                let d: CGFloat = level % 2 == 0 ? 6 : 5
+                let d: CGFloat = Theme.s(level % 2 == 0 ? 5 : 4.5)
                 let cx = ox + CGFloat(level) * Theme.listIndent + Theme.listIndent / 2
-                let cy = oy + geo.baseline - 5.5
+                let cy = oy + geo.baseline - Theme.s(5)
                 let dot = NSRect(x: cx - d / 2, y: cy - d / 2, width: d, height: d)
                 if level % 2 == 0 { NSBezierPath(ovalIn: dot).fill() }
                 else { Palette.text.setStroke(); let p = NSBezierPath(ovalIn: dot.insetBy(dx: 0.5, dy: 0.5)); p.lineWidth = 1; p.stroke() }
@@ -117,14 +126,14 @@ final class EditorLayoutManager: NSLayoutManager {
                 let n = orderedNumber(at: pr.location, level: level, storage: storage)
                 let s = NSAttributedString(string: "\(n).", attributes: [.font: Fonts.body(.regular), .foregroundColor: Palette.secondaryText])
                 let w = s.size().width
-                let right = ox + CGFloat(level + 1) * Theme.listIndent - 6
+                let right = ox + CGFloat(level + 1) * Theme.listIndent - Theme.s(5)
                 // วางบนฐานบรรทัดเดียวกับข้อความ
                 let asc = Fonts.body(.regular).ascender
                 s.draw(at: NSPoint(x: right - w, y: oy + geo.baseline - asc))
             case .task(let level, let checked):
                 let size = Self.checkboxSize
                 let box = NSRect(x: ox + CGFloat(level) * Theme.listIndent + (Theme.listIndent - size) / 2 + 1,
-                                 y: oy + geo.baseline - size + 3, width: size, height: size)
+                                 y: oy + geo.baseline - size + Theme.s(3), width: size, height: size)
                 let path = NSBezierPath(roundedRect: box.insetBy(dx: 0.75, dy: 0.75), xRadius: 4, yRadius: 4)
                 if checked {
                     Palette.accent.setFill(); path.fill()
