@@ -127,4 +127,41 @@ extension EditorTextView {
             if case .ok(let text) = r, let v = Self.makeVideo(from: text) { self.insertVideo(v) }
         }
     }
+
+    // MARK: - Insert Divider
+    @objc func jotInsertDivider(_ s: Any?) { insertDivider() }
+
+    /// เส้นคั่น: ย่อหน้าว่าง = แปลงเป็นเส้นคั่น, ไม่ว่าง = แทรกเป็นบล็อกใหม่ใต้บล็อกปัจจุบัน
+    /// เคอร์เซอร์ไปอยู่ย่อหน้าว่างถัดจากเส้นคั่นเสมอ แก้ครั้งเดียว (undo ครั้งเดียว)
+    @discardableResult
+    func insertDivider() -> Bool {
+        let kind = blockKindAtCaret
+        guard !kind.isCodeLike, !kind.isTableCell else { return false }
+        let pr = paragraphRange(containing: selectedRange().location)
+        let content = contentRange(of: pr)
+        let hrAttrs = Theme.attributes(for: .thematicBreak)
+        let hasNL = pr.length > content.length
+        let target: Int
+        if content.length == 0 {
+            let out = NSMutableAttributedString(string: thematicBreakText + "\n", attributes: hrAttrs)
+            if hasNL { out.append(NSAttributedString(string: "\n", attributes: Theme.attributes(for: .paragraph))) }
+            replaceRange(pr, with: out, selection: NSRange(location: pr.location + 2, length: 0))
+            target = pr.location + 2
+        } else if hasNL {
+            let out = NSMutableAttributedString(string: thematicBreakText + "\n", attributes: hrAttrs)
+            out.append(NSAttributedString(string: "\n", attributes: Theme.attributes(for: .paragraph)))
+            let at = NSMaxRange(pr)
+            replaceRange(NSRange(location: at, length: 0), with: out, selection: NSRange(location: at + 2, length: 0))
+            target = at + 2
+        } else {
+            let out = NSMutableAttributedString(string: "\n", attributes: Theme.attributes(for: kind))
+            out.append(NSAttributedString(string: thematicBreakText + "\n", attributes: hrAttrs))
+            let at = NSMaxRange(content)
+            replaceRange(NSRange(location: at, length: 0), with: out, selection: NSRange(location: at + 3, length: 0))
+            target = at + 3
+        }
+        if paragraphRange(containing: target).length == 0 { pendingEmptyBlock = (target, .paragraph) }
+        syncTypingAttributes()
+        return true
+    }
 }

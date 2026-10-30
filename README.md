@@ -82,6 +82,7 @@ Type these at the start of a line and they turn into formatting. Press ⌘Z to u
 | Quote / Code block | ⇧⌘. / ⌥⌘C |
 | Insert table / Insert image | ⌃⌘T / ⇧⌘I |
 | Insert YouTube video | ⌃⌘Y |
+| Insert divider | ⌃⌘- |
 | Open link | ⌥↩ |
 | Indent / Outdent list item | Tab / ⇧Tab |
 | Line break inside a list item | ⇧↩ |

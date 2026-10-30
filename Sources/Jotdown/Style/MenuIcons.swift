@@ -28,6 +28,7 @@ enum MenuIcons {
         "jotInsertImage:": "photo",
         "jotInsertVideo:": "play.rectangle",
         "jotInsertTable:": "tablecells",
+        "jotInsertDivider:": "minus",
         // ตาราง
         "jotSelectTable:": "rectangle.dashed",
         "jotTableRowAbove:": "arrow.up.to.line",

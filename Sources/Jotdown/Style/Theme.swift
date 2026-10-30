@@ -64,7 +64,7 @@ enum Theme {
         let bold = inline.contains(.bold)
         var header = false
         if case .tableCell(let r, _, _) = kind { header = r == 0 }
-        let key = "\(_zoom)|\(kind.code.prefix(2))|\(kind.isHeading ? kind.code : "")|\(bold || header)|\(inline.contains(.code))"
+        let key = "\(_zoom)|\(kind.code.prefix(2))|\(kind.isHeading ? kind.code : "")|\(bold || header)|\(header)|\(inline.contains(.code))"
         if let f = fontCache[key] { return f }
         let f: NSFont
         switch kind {
@@ -76,7 +76,8 @@ enum Theme {
             else { f = Fonts.heading(bold ? .bold : s.weight, size: s.size) }
         default:
             if inline.contains(.code) { f = NSFont.monospacedSystemFont(ofSize: monoSize, weight: bold || header ? .bold : .regular) }
-            else { f = Fonts.body(bold || header ? .bold : .regular) }
+            else if header { f = Fonts.heading(.bold, size: bodySize) }   // หัวตาราง: Plex Sans Thai (ไม่มีหัว)
+            else { f = Fonts.body(bold ? .bold : .regular) }
         }
         fontCache[key] = f
         return f

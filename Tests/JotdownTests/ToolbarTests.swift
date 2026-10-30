@@ -30,7 +30,7 @@ import AppKit
                 count += 1
             }
         }
-        #expect(count == 13)
+        #expect(count == 14)
         let style = tb.toolbar(tb.toolbar, itemForItemIdentifier: FormatToolbar.textStyleID, willBeInsertedIntoToolbar: true) as! NSMenuToolbarItem
         #expect(style.menu.items.map(\.title) == ["Body", "Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5", "Heading 6"])
         #expect(style.menuFormRepresentation != nil)
@@ -146,6 +146,38 @@ import AppKit
         #expect(tb?.keyEquivalent == "t" && tb?.keyEquivalentModifierMask == [.command, .option])
         let insertImage = menu.items.first { $0.title == "Format" }!.submenu!.items.first { $0.title == "Insert Image…" }
         #expect(insertImage?.keyEquivalent == "i" && insertImage?.keyEquivalentModifierMask == [.command, .shift])
+    }
+
+    @Test func dividerButtonFollowsMenuValidation() {
+        let (_, vc, tb) = make("ab\n\n```\ncode\n```\n")
+        let tv = vc.textView!
+        let blocks = group(tb, "jotdown.blocks")
+        let i = FormatToolbar.groups.first { $0.id == "jotdown.blocks" }!.tools.firstIndex { $0.id == "divider" }!
+        #expect(blocks.buttons[i].toolTip == "Divider (⌃⌘-)")
+        tv.select(1); tb.update()
+        #expect(blocks.buttons[i].isEnabled)
+        tv.select(tv.nsString.range(of: "code").location + 1); tb.update()
+        #expect(!blocks.buttons[i].isEnabled)
+    }
+
+    /// แถบปุ่มทั้งหมดเรียงกัน (กว้างปกติ) + แถบแคบ (ปุ่มที่ล้นไปอยู่ใน » ตามระบบ: ตรวจที่ menuFormRepresentation ครบทุกปุ่ม)
+    @Test func snapshots() throws {
+        for ap in [NSAppearance.Name.aqua, .darkAqua] {
+            for (name, width) in [("toolbar-wide", 620), ("toolbar-narrow", 330)] {
+                let (_, _, tb) = make()
+                let strip = NSStackView(views: FormatToolbar.groups.map { group(tb, $0.id) })
+                strip.orientation = .horizontal; strip.spacing = 10; strip.alignment = .centerY
+                let vc = NSViewController()
+                let host = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 44))
+                strip.frame = NSRect(x: 8, y: 6, width: width - 16, height: 32)
+                strip.autoresizingMask = []
+                host.addSubview(strip); host.wantsLayer = true
+                host.layer?.masksToBounds = true
+                vc.view = host
+                let shot = try snapshot(name, size: CGSize(width: width, height: 44), appearance: ap, viewController: vc)
+                print("SNAPSHOT \(shot.png.path)")
+            }
+        }
     }
 }
 

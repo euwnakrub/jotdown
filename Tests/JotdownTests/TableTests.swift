@@ -397,9 +397,9 @@ import AppKit
         #expect(cov.total > 20 && cov.covered >= cov.total * 95 / 100, Comment(rawValue: "เส้นขอบขวาของตารางหาย: \(cov) @\(size) \(ap.rawValue)"))
     }
     @Test func tableAqua900() throws { try snapTable(CGSize(width: 900, height: 700), .aqua) }
-    @Test func tableAqua480() throws { try snapTable(CGSize(width: 480, height: 360), .aqua) }
+    @Test func tableAqua480() throws { try snapTable(CGSize(width: 480, height: 320), .aqua) }
     @Test func tableDark900() throws { try snapTable(CGSize(width: 900, height: 700), .darkAqua) }
-    @Test func tableDark480() throws { try snapTable(CGSize(width: 480, height: 360), .darkAqua) }
+    @Test func tableDark480() throws { try snapTable(CGSize(width: 480, height: 320), .darkAqua) }
     @Test func tableAqua700() throws { try snapTable(CGSize(width: 700, height: 600), .aqua) }
     @Test func tableDark1400() throws { try snapTable(CGSize(width: 1400, height: 700), .darkAqua) }
     @Test func tableAqua1400() throws { try snapTable(CGSize(width: 1400, height: 700), .aqua) }

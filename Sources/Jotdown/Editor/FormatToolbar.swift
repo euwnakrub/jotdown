@@ -32,6 +32,7 @@ final class FormatToolbar: NSObject, NSToolbarDelegate {
         ("jotdown.blocks", "Blocks", [
             Tool(id: "quote", tip: "Quote (⇧⌘.)", label: "Quote", action: #selector(EditorTextView.jotToggleQuote(_:))),
             Tool(id: "codeblock", tip: "Code Block (⌥⌘C)", label: "Code Block", action: #selector(EditorTextView.jotToggleCodeBlock(_:))),
+            Tool(id: "divider", tip: "Divider (⌃⌘-)", label: "Divider", action: #selector(EditorTextView.jotInsertDivider(_:))),
             Tool(id: "table", tip: "Insert Table (⌃⌘T)", label: "Table", action: #selector(EditorTextView.jotInsertTable(_:))),
             Tool(id: "video", tip: "Insert YouTube Video… (⌃⌘Y)", label: "YouTube Video", action: #selector(EditorTextView.jotInsertVideo(_:))),
             Tool(id: "image", tip: "Insert Image… (⇧⌘I)", label: "Image", action: #selector(EditorTextView.jotInsertImage(_:))),

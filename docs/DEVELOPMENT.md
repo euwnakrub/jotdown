@@ -128,3 +128,10 @@
 - สีเป็นแค่ `.foregroundColor` (ไม่กระทบ markdown): ใส่ตอน parse (`MarkdownParser.attributedString`) และ `restyleOne` → `applySyntaxColors` เฉพาะกล่องที่แก้ ห้ามทำใน `willProcessEditing` (editedRange โตแล้วเคอร์เซอร์เลื่อน) จึงมี `highlight:` flag และไปทำใน `didChangeText`
 - เปลี่ยนภาษา: ป้ายมุมบนขวาของกล่อง (คลิก → เมนู) หรือคลิกขวา > Code Language (`EditorTextView+CodeLanguage.swift`, undo ได้); `Other…` พิมพ์ชื่อเอง แถบหัวกล่องสูง `Theme.codeHeaderHeight`
 - เทสต์: `SyntaxTokenizerTests` (ทุกภาษา, runs ครอบคลุมข้อความ, 1000 บรรทัด < 1s, contrast ของ palette), `CodeBlockTests` (round-trip, สีตอนโหลด, พิมพ์แล้ว re-highlight เฉพาะกล่อง, เปลี่ยนภาษา/undo, snapshot `code-blocks-{aqua,dark}-*`)
+
+## Insert Divider (2026-10-30)
+- ปุ่ม Divider บน toolbar (กลุ่ม Blocks หลัง Code Block, tooltip "Divider (⌃⌘-)", validate เดียวกับเมนู) — `ToolbarTests`
+- Format → Insert Divider (⌃⌘-, ไอคอน `minus`) = `jotInsertDivider:` → `EditorTextView.insertDivider()` (`Editor/EditorTextView+Video.swift`). บรรทัดว่าง = แปลงเป็นเส้นคั่น; มีข้อความ = แทรกเส้นคั่นเป็นบล็อกใหม่ใต้บล็อกปัจจุบัน; เคอร์เซอร์ไปย่อหน้าว่างถัดไป; undo ครั้งเดียว. disable ใน code block / ตาราง (ต่างจาก Insert Table ที่ disable ในตารางเช่นกัน). เทสต์: `DividerTests`
+
+## หัวตารางใช้ Plex Sans Thai (2026-10-30)
+- เซลล์แถว 0 ใช้ `Fonts.heading(.bold)` (IBM Plex Sans Thai ไม่มีหัว) แทน Looped; เนื้อหาในตารางยังเป็น Looped. อยู่ใน `Theme.font(for:inline:)` จุดเดียว (restyle/zoom/แถว-คอลัมน์ใหม่จึงได้ผลเอง); inline code ใน header ไม่เปลี่ยน; แก้ key ของ font cache ให้แยก header ออกจาก bold ปกติ. เทสต์: `TableHeaderFontTests`

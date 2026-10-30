@@ -112,6 +112,7 @@ enum MainMenu {
             fmt("Code Block", "jotToggleCodeBlock:", "c", [.command, .option]),
             fmt("Insert Image…", "jotInsertImage:", "i", [.command, .shift]),
             fmt("Insert YouTube Video…", "jotInsertVideo:", "y", [.command, .control]),
+            fmt("Insert Divider", "jotInsertDivider:", "-", [.command, .control]),
             .separator(),
             submenu("Table", [
                 fmt("Insert Table", "jotInsertTable:", "t", [.command, .control]),

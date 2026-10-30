@@ -216,6 +216,7 @@ extension EditorTextView {
         case #selector(jotSetCodeLanguage(_:)): return true
         case #selector(jotOpenLink(_:)), #selector(jotCopyLinkAddress(_:)), #selector(jotRemoveLink(_:)): return linkHitAtSelection() != nil
         case #selector(jotInsertVideo(_:)): return !blockKindAtCaret.isCodeLike && !blockKindAtCaret.isTableCell
+        case #selector(jotInsertDivider(_:)): return !blockKindAtCaret.isCodeLike && !blockKindAtCaret.isTableCell
         case #selector(jotPlayVideo(_:)), #selector(jotOpenVideoInYouTube(_:)), #selector(jotCopyVideoLink(_:)): return selectedVideo() != nil
         case #selector(jotInsertImage(_:)): return !blockKindAtCaret.isCodeLike
         case #selector(jotToggleCheckOrExit(_:)):
