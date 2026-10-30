@@ -9,12 +9,16 @@ final class EditorLayoutManager: NSLayoutManager {
 
     private func geometry(for pr: NSRange) -> Geometry? {
         let g = glyphRange(forCharacterRange: pr, actualCharacterRange: nil)
-        guard g.length > 0 else { return nil }
+        guard g.length > 0 else { return emptyLastGeometry(for: pr) }
         var geo: Geometry?
         enumerateLineFragments(forGlyphRange: g) { rect, used, _, glyphs, _ in
             if geo == nil {
-                let loc = self.location(forGlyphAt: glyphs.location)
-                geo = Geometry(first: rect, firstUsed: used, lastUsed: used, baseline: rect.minY + loc.y, minY: used.minY, maxY: used.maxY)
+                var baseline = rect.minY + self.location(forGlyphAt: glyphs.location).y
+                // ย่อหน้าว่าง (มีแค่ "\n"): ระบบรายงานเส้นฐานของตัวขึ้นบรรทัดที่ขอบล่างบรรทัด -> คำนวณจากฟอนต์แทน
+                if let storage = self.textStorage, pr.length > 0, (storage.string as NSString).character(at: pr.location) == 0x0A {
+                    baseline = used.minY + Self.baselineOffset(storage.attributes(at: pr.location, effectiveRange: nil))
+                }
+                geo = Geometry(first: rect, firstUsed: used, lastUsed: used, baseline: baseline, minY: used.minY, maxY: used.maxY)
             } else {
                 geo!.lastUsed = used; geo!.maxY = used.maxY
             }
@@ -22,12 +26,41 @@ final class EditorLayoutManager: NSLayoutManager {
         return geo
     }
 
+    /// ย่อหน้าว่างท้ายเอกสาร (หลังกด Enter ท้ายลิสต์): ไม่มีตัวอักษร ใช้ extra line fragment + typing attributes ของ text view
+    private func emptyLastGeometry(for pr: NSRange) -> Geometry? {
+        guard let storage = textStorage, pr.length == 0, pr.location == storage.length, storage.length > 0,
+              extraLineFragmentRect.height > 0, let tv = firstTextView else { return nil }
+        let rect = extraLineFragmentRect, used = extraLineFragmentUsedRect
+        let baseline = used.minY + Self.baselineOffset(tv.typingAttributes)
+        return Geometry(first: rect, firstUsed: used, lastUsed: used, baseline: baseline, minY: used.minY, maxY: used.maxY)
+    }
+
+    /// ระยะจากขอบบนของ used rect ถึงเส้นฐาน สำหรับบรรทัดที่ใช้ attribute ชุดนี้ (วางบรรทัดทดลอง "X")
+    static func baselineOffset(_ attrs: [NSAttributedString.Key: Any]) -> CGFloat {
+        let ts = NSTextStorage(string: "X", attributes: attrs)
+        let lm = NSLayoutManager()
+        let tc = NSTextContainer(size: NSSize(width: 10_000, height: 10_000))
+        tc.lineFragmentPadding = 0
+        lm.addTextContainer(tc)
+        ts.addLayoutManager(lm)
+        lm.ensureLayout(for: tc)
+        let rect = lm.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+        let used = lm.lineFragmentUsedRect(forGlyphAt: 0, effectiveRange: nil)
+        return rect.minY + lm.location(forGlyphAt: 0).y - used.minY
+    }
+
+    /// ชนิดบล็อกของย่อหน้า (ย่อหน้าว่างท้ายเอกสารไม่มีตัวอักษร: ถาม text view)
+    private func blockKind(ofParagraph pr: NSRange, storage: NSTextStorage) -> BlockKind {
+        if pr.length == 0, let tv = firstTextView as? EditorTextView { return tv.kind(at: pr.location) }
+        return storage.blockKind(at: pr.location)
+    }
+
     /// ตำแหน่งกล่อง checkbox/เครื่องหมายของย่อหน้า (พิกัด text container) — ใช้ทั้งวาดและ hit test
     func markerRect(forParagraphAt charIndex: Int) -> NSRect? {
         guard let storage = textStorage, storage.length > 0 else { return nil }
         let ns = storage.string as NSString
-        let pr = ns.paragraphRange(for: NSRange(location: min(charIndex, ns.length - 1), length: 0))
-        let kind = storage.blockKind(at: pr.location)
+        let pr = ns.paragraphRange(for: NSRange(location: min(charIndex, ns.length), length: 0))
+        let kind = blockKind(ofParagraph: pr, storage: storage)
         guard let level = kind.listLevel, let geo = geometry(for: pr) else { return nil }
         let size = Self.checkboxSize
         let x = CGFloat(level) * Theme.listIndent + (Theme.listIndent - size) / 2 + 1
@@ -146,10 +179,12 @@ final class EditorLayoutManager: NSLayoutManager {
 
         // ระดับย่อหน้า
         var loc = chars.location
-        while loc < NSMaxRange(chars) {
+        // ย่อหน้าว่างท้ายเอกสาร (ไม่มี glyph) อยู่นอก glyphsToShow: วาดด้วยเมื่อวาดถึงท้ายเอกสาร
+        let drawsTail = NSMaxRange(glyphsToShow) >= numberOfGlyphs && ns.length > 0 && ns.character(at: ns.length - 1) == 0x0A
+        while loc < NSMaxRange(chars) || (drawsTail && loc == ns.length) {
             let pr = ns.paragraphRange(for: NSRange(location: loc, length: 0))
-            loc = NSMaxRange(pr)
-            let kind = storage.blockKind(at: pr.location)
+            loc = pr.length == 0 ? loc + 1 : NSMaxRange(pr)
+            let kind = blockKind(ofParagraph: pr, storage: storage)
             guard kind != .paragraph, !kind.isHeading, !kind.isTableCell, let geo = geometry(for: pr) else { continue }
             let ox = origin.x, oy = origin.y
             switch kind {

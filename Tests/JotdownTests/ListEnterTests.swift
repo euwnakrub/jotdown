@@ -140,4 +140,78 @@ import AppKit
         d3.undoManager?.undo()
         #expect(d3.currentMarkdown == "- foobar\n")
     }
+
+    // MARK: - เครื่องหมายลิสต์บนบรรทัดว่าง
+    func markerY(_ tv: EditorTextView, _ loc: Int) -> CGFloat? {
+        let lm = tv.layoutManager as! EditorLayoutManager
+        lm.ensureLayout(for: tv.textContainer!)
+        guard let m = lm.markerRect(forParagraphAt: loc) else { return nil }
+        let line: NSRect
+        if loc == tv.nsString.length { line = lm.extraLineFragmentUsedRect }
+        else { line = lm.lineFragmentUsedRect(forGlyphAt: lm.glyphIndexForCharacter(at: loc), effectiveRange: nil) }
+        return m.minY - line.minY
+    }
+
+    @Test func enterAtEndOfLastListItemShowsMarkerRightAway() {
+        for md in ["1. one\n2. two\n", "- one\n- two\n", "- [ ] one\n- [ ] two\n"] {
+            let (_, vc) = makeEditor(md)
+            let tv = vc.textView!
+            let normal = markerY(tv, 0)
+            tv.select(tv.nsString.length)
+            tv.event { tv.insertNewline(nil) }
+            #expect(tv.nsString.length > 0 && tv.selectedRange().location == tv.nsString.length)
+            #expect(markerY(tv, tv.nsString.length) != nil, Comment(rawValue: md))
+            #expect(markerY(tv, tv.nsString.length) == normal, Comment(rawValue: md))
+        }
+    }
+
+    @Test func emptyListItemInMiddleKeepsMarkerOnBaseline() {
+        let (_, vc) = makeEditor("1. one\n2. two\n3. three\n")
+        let tv = vc.textView!
+        let normal = markerY(tv, 0)
+        tv.select(tv.nsString.range(of: "two").location + 3)
+        tv.event { tv.insertNewline(nil) }
+        let empty = tv.selectedRange().location
+        #expect(tv.nsString.character(at: empty) == 0x0A)
+        #expect(markerY(tv, empty) == normal)
+    }
+
+    // MARK: - Backspace/Delete รวมย่อหน้า: เคอร์เซอร์อยู่ที่รอยต่อ
+    @Test func backspaceOnEmptyLineAfterListPutsCaretAtEndOfPreviousItem() {
+        let (doc, vc) = makeEditor("- one\n  - Document\n- Manual\n")
+        let tv = vc.textView!
+        tv.select(NSMaxRange(tv.nsString.range(of: "Document")))
+        tv.event { tv.insertNewline(nil) }
+        for _ in 0..<3 { tv.event { tv.deleteBackward(nil) } }
+        #expect(doc.currentMarkdown == "- one\n  - Document\n- Manual\n")
+        #expect(tv.selectedRange().location == NSMaxRange(tv.nsString.range(of: "Document")))
+    }
+
+    @Test func backspaceMergeKeepsCaretAtJoin() {
+        let (doc, vc) = makeEditor("- Document\n\nabc\n")
+        let tv = vc.textView!
+        tv.select(tv.nsString.range(of: "abc").location)
+        tv.event { tv.deleteBackward(nil) }
+        #expect(doc.currentMarkdown == "- Documentabc\n")
+        #expect(tv.selectedRange().location == tv.nsString.range(of: "abc").location)
+    }
+
+    @Test func forwardDeleteMergeKeepsCaret() {
+        let (doc, vc) = makeEditor("- Document\n\nabc\n")
+        let tv = vc.textView!
+        let end = NSMaxRange(tv.nsString.range(of: "Document"))
+        tv.select(end)
+        tv.event { tv.deleteForward(nil) }
+        #expect(doc.currentMarkdown == "- Documentabc\n")
+        #expect(tv.selectedRange().location == end)
+    }
+
+    @Test func enterInSublistKeepsFollowingItems() {
+        let (doc, vc) = makeEditor("- a\n  - b\n    - c\n  - Document\n- Manual\n")
+        let tv = vc.textView!
+        tv.select(NSMaxRange(tv.nsString.range(of: "c")))
+        tv.event { tv.insertNewline(nil) }
+        tv.type("d")
+        #expect(doc.currentMarkdown == "- a\n  - b\n    - c\n    - d\n  - Document\n- Manual\n")
+    }
 }

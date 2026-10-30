@@ -14,6 +14,7 @@ enum MenuIcons {
         "jotEditLink:": "link",
         "jotOpenLink:": "arrow.up.right.square",
         "jotCopyLinkAddress:": "doc.on.doc",
+        "jotCopyAsMarkdown:": "doc.plaintext",
         "jotRemoveLink:": "xmark.circle",
         // บล็อก
         "jotSetParagraph:": "paragraphsign",

@@ -129,7 +129,10 @@ extension EditorTextView {
             let pr = paragraphRange(containing: sel.location)
             if sel.location >= NSMaxRange(contentRange(of: pr)) { return }
         }
+        let merging = sel.length == 0 && sel.location < storage.length && nsString.character(at: sel.location) == 0x0A
         super.deleteForward(sender)
+        // รวมย่อหน้าถัดไปเข้ามา: เคอร์เซอร์อยู่ที่เดิม (ไม่ให้ไปท้ายย่อหน้า)
+        if merging { setSelectedRange(NSRange(location: sel.location, length: 0)); syncTypingAttributes() }
     }
 
     // MARK: - ป้องกันโครงตาราง

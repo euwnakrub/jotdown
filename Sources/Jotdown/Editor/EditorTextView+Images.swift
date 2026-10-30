@@ -66,7 +66,13 @@ extension EditorTextView {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let m = contextMenu(for: event)
-        if let m { MenuIcons.decorate(m) }
+        if let m {
+            // ใส่ "Copy as Markdown" ต่อจาก Copy ของเมนูมาตรฐาน
+            if let i = m.items.firstIndex(where: { $0.action == #selector(NSText.copy(_:)) }) {
+                m.insertItem(NSMenuItem(title: "Copy as Markdown", action: #selector(jotCopyAsMarkdown(_:)), keyEquivalent: ""), at: i + 1)
+            }
+            MenuIcons.decorate(m)
+        }
         return m
     }
 

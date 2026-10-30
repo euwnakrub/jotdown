@@ -1,4 +1,5 @@
 import AppKit
+import Markdown
 
 extension EditorTextView {
     // MARK: - คัดลอก
@@ -20,7 +21,9 @@ extension EditorTextView {
         guard sel.length > 0 else { return }
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.setString(markdown(forSelection: sel), forType: .string)
+        let md = markdown(forSelection: sel)
+        pb.setString(md, forType: .string)
+        pb.setString(md, forType: Self.jotMarkdownType)
         if sel.length == 1, let enc = storage.attribute(.jotImage, at: sel.location, effectiveRange: nil) as? String, let ref = ImageRef(encoded: enc), let img = image(for: ref) {
             if let tiff = img.tiffRepresentation { pb.setData(tiff, forType: .tiff) }
             return
@@ -31,6 +34,30 @@ extension EditorTextView {
         if let data = try? rich.data(from: NSRange(location: 0, length: rich.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]) {
             pb.setData(data, forType: .rtf)
         }
+        // HTML: Notion / Google Docs / Mail อ่าน HTML ก่อน RTF — ได้หัวข้อ ลิสต์ ตาราง ครบ (RTF ไม่มีโครงสร้างพวกนี้)
+        pb.setString(Self.html(fromMarkdown: md), forType: .html)
+    }
+
+    /// ชนิดบน clipboard ที่บอกว่าคัดลอกจาก Jotdown — วางกลับในแอปให้ใช้ Markdown แทน HTML
+    static let jotMarkdownType = NSPasteboard.PasteboardType("com.euw.jotdown.markdown")
+
+    static func html(fromMarkdown md: String) -> String {
+        "<meta charset=\"utf-8\">" + HTMLFormatter.format(md)
+    }
+
+    /// คัดลอกเป็นโค้ด Markdown ล้วน (ไม่มี RTF) ให้แอปอื่นวางเป็นข้อความ Markdown — ไม่ได้เลือกอะไร = ทั้งเอกสาร
+    @objc func jotCopyAsMarkdown(_ sender: Any?) {
+        let sel = selectedRange()
+        var md: String
+        if sel.length > 0 {
+            md = markdown(forSelection: sel)
+        } else {
+            md = MarkdownSerializer.serialize(storage)
+            if md.hasSuffix("\n") { md.removeLast() }
+        }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(md, forType: .string)
     }
 
     override func cut(_ sender: Any?) {
@@ -40,7 +67,7 @@ extension EditorTextView {
     }
 
     // MARK: - วาง
-    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string, .html] }
+    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [Self.jotMarkdownType, .string, .html] }
     override func paste(_ sender: Any?) { pasteFrom(NSPasteboard.general) }
     override func pasteAsRichText(_ sender: Any?) { pasteFrom(NSPasteboard.general) }
     override func pasteAsPlainText(_ sender: Any?) { pasteFrom(NSPasteboard.general, forcePlain: true) }
@@ -58,8 +85,9 @@ extension EditorTextView {
 
     func pasteFrom(_ pb: NSPasteboard, forcePlain: Bool = false) {
         if !forcePlain, insertImages(from: pb, at: nil) { return }
-        let string = pb.string(forType: .string)
-        let html = pb.string(forType: .html)
+        let fromJot = pb.string(forType: Self.jotMarkdownType)
+        let string = fromJot ?? pb.string(forType: .string)
+        let html = fromJot == nil ? pb.string(forType: .html) : nil
         let sel = selectedRange()
         let kind = blockKindAtCaret
 

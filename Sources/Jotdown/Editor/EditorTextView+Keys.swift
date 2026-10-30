@@ -13,6 +13,24 @@ extension EditorTextView {
         um?.enableUndoRegistration()
     }
 
+    /// Text Replacements ของ macOS: ไม่แทนที่ในกล่องโค้ด/ข้อความดิบ และ inline code
+    override func handleTextCheckingResults(_ results: [NSTextCheckingResult], forRange range: NSRange, types checkingTypes: NSTextCheckingTypes,
+                                            options: [NSSpellChecker.OptionKey: Any] = [:], orthography: NSOrthography, wordCount: Int) {
+        super.handleTextCheckingResults(withoutCodeReplacements(results), forRange: range, types: checkingTypes, options: options, orthography: orthography, wordCount: wordCount)
+    }
+
+    func withoutCodeReplacements(_ results: [NSTextCheckingResult]) -> [NSTextCheckingResult] {
+        results.filter { $0.resultType != .replacement || !isCodeText($0.range) }
+    }
+
+    func isCodeText(_ r: NSRange) -> Bool {
+        guard r.location < storage.length else { return false }
+        if storage.blockKind(at: r.location).isCodeLike { return true }
+        let end = min(NSMaxRange(r), storage.length)
+        for i in r.location..<max(end, r.location + 1) where storage.inlineStyle(at: i).contains(.code) { return true }
+        return false
+    }
+
     override func insertText(_ string: Any, replacementRange: NSRange) {
         // ในกล่องโค้ด/ข้อความดิบ: "\n" ที่วางหรือพิมพ์ต้องเป็นขึ้นบรรทัดในบล็อกเดียว
         if !internalEdit, blockKindAtCaret.isCodeLike, let s = string as? String, s.contains("\n") {
@@ -264,7 +282,10 @@ extension EditorTextView {
             }
         }
         let lastChar = pr.length == 1 && NSMaxRange(pr) == storage.length && kind != .paragraph
+        let merging = loc == pr.location && loc > 0
         super.deleteBackward(sender)
+        // รวมกับย่อหน้าก่อนหน้า: การจัดรูปแบบใหม่ใน willProcessEditing ทำให้ระบบวางเคอร์เซอร์ท้ายย่อหน้า -> วางกลับที่รอยต่อ
+        if merging { setSelectedRange(NSRange(location: loc - 1, length: 0)); syncTypingAttributes() }
         if lastChar {
             // ลบตัวสุดท้ายของย่อหน้าท้ายเอกสาร: ย่อหน้ายังเป็นชนิดเดิม (ว่าง)
             pendingEmptyBlock = (selectedRange().location, kind)

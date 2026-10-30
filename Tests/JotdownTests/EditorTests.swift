@@ -476,6 +476,58 @@ extension EditorTextView {
         #expect(doc2.currentMarkdown == "ab **cd** ef\n\n- x\n- y\n")
     }
 
+    @Test func copyPutsHTMLWithHeadingsAndLists() {
+        let (doc, vc) = makeEditor("### Question\n\n1. ยังไง?\n\n- **Direct API** ปุ่ม\n  - Button\n- Manual Form\n")
+        let tv = vc.textView!
+        tv.select(0, tv.storage.length)
+        tv.copy(nil)
+        let html = NSPasteboard.general.string(forType: .html) ?? ""
+        for tag in ["<h3>Question</h3>", "<ol>", "<ul>", "<strong>Direct API</strong>", "Button", "Manual Form"] {
+            #expect(html.contains(tag), Comment(rawValue: tag))
+        }
+        // วางกลับใน Jotdown ใช้ Markdown ไม่ใช่ HTML
+        let (doc2, vc2) = makeEditor()
+        vc2.textView.paste(nil)
+        #expect(doc2.currentMarkdown == doc.currentMarkdown)
+        // คำเดียวไม่มีเครื่องหมาย markdown ก็ยังวางกลับได้ตรง
+        tv.select(tv.nsString.range(of: "Manual").location, 6)
+        tv.copy(nil)
+        let (doc3, vc3) = makeEditor()
+        vc3.textView.paste(nil)
+        #expect(doc3.currentMarkdown == "Manual\n")
+    }
+
+    @Test func copyAsMarkdownPutsOnlyMarkdownText() {
+        let (_, vc) = makeEditor("# Title\n\nab **cd** ef\n\n- x\n- y\n")
+        let tv = vc.textView!
+        let pb = NSPasteboard.general
+        tv.select(tv.nsString.range(of: "cd").location, 2)
+        tv.jotCopyAsMarkdown(nil)
+        #expect(pb.string(forType: .string) == "**cd**")
+        #expect(pb.data(forType: .rtf) == nil)
+        // ไม่ได้เลือก = ทั้งเอกสาร
+        tv.select(0, 0)
+        tv.jotCopyAsMarkdown(nil)
+        #expect(pb.string(forType: .string) == "# Title\n\nab **cd** ef\n\n- x\n- y")
+        #expect(pb.data(forType: .rtf) == nil)
+    }
+
+    @Test func macTextReplacementSkipsCode() {
+        let (_, vc) = makeEditor("omw now\n\n`omw` code\n\n```\nomw\n```\n")
+        let tv = vc.textView!
+        #expect(tv.isAutomaticTextReplacementEnabled)
+        let ns = tv.nsString
+        func kept(_ r: NSRange) -> Bool {
+            !tv.withoutCodeReplacements([.replacementCheckingResult(range: r, replacementString: "On my way!")]).isEmpty
+        }
+        let first = ns.range(of: "omw")
+        let inline = ns.range(of: "omw", range: NSRange(location: NSMaxRange(first), length: ns.length - NSMaxRange(first)))
+        let block = ns.range(of: "omw", options: .backwards)
+        #expect(kept(first))
+        #expect(!kept(inline))
+        #expect(!kept(block))
+    }
+
     // MARK: - ความเร็ว
     @Test func largeDocumentIsFast() {
         var md = ""

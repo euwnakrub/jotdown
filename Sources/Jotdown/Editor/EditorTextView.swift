@@ -2,7 +2,9 @@ import AppKit
 
 final class EditorTextView: NSTextView {
     /// ย่อหน้าว่างท้ายเอกสาร (ยังไม่มีตัวอักษรให้เก็บ attribute) จำชนิดบล็อกที่ตั้งใจไว้ตรงนี้
-    var pendingEmptyBlock: (location: Int, kind: BlockKind)?
+    /// ชนิดของย่อหน้าว่างท้ายเอกสาร (ยังไม่มีตัวอักษรให้เก็บ attribute) — เปลี่ยนแล้วต้องวาดใหม่เพื่อให้ bullet/เลขขึ้นหรือหาย
+    var linesShifted = false
+    var pendingEmptyBlock: (location: Int, kind: BlockKind)? { didSet { setNeedsDisplay(visibleRect) } }
     /// non-contiguous layout ทำให้ NSTextTable วางเซลล์ผิดคอลัมน์ จึงปิด (ดู README) — เปิดได้เฉพาะเพื่อทดลองในเทสต์
     nonisolated(unsafe) static var useNonContiguousLayout = false
     var tableCheckWork: DispatchWorkItem?
@@ -50,7 +52,7 @@ final class EditorTextView: NSTextView {
         isSelectable = true
         isAutomaticQuoteSubstitutionEnabled = false
         isAutomaticDashSubstitutionEnabled = false
-        isAutomaticTextReplacementEnabled = false
+        isAutomaticTextReplacementEnabled = true   // Text Replacements ของ macOS (System Settings > Keyboard) — ข้ามโค้ด ดู handleTextCheckingResults
         isAutomaticSpellingCorrectionEnabled = false
         isAutomaticLinkDetectionEnabled = false
         isAutomaticDataDetectionEnabled = false
@@ -153,6 +155,8 @@ final class EditorTextView: NSTextView {
     /// ปรับระยะย่อหน้าของย่อหน้าข้างเคียงหลังแก้ไข (ระยะหลังย่อหน้าขึ้นกับบล็อกถัดไป)
     override func didChangeText() {
         super.didChangeText()
+        // บางครั้งระบบวาดใหม่แค่บรรทัดที่แก้ ทำให้บรรทัดถัดไปค้างภาพเก่า (เช่นรายการหายหลังกด Enter ในลิสต์ย่อย)
+        if linesShifted { linesShifted = false; setNeedsDisplay(visibleRect) }
         updatePlayerFrames()
         guard storage.length > 0 else { return }
         scheduleTableLayoutCheck()
@@ -239,6 +243,9 @@ final class EditorTextView: NSTextView {
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
         let undoing = (undoManager?.isUndoing ?? false) || (undoManager?.isRedoing ?? false)
         pendingReplacement = replacementString
+        // เพิ่ม/ลบตัวขึ้นบรรทัด = บรรทัดด้านล่างเลื่อนทั้งหมด (ดู didChangeText)
+        if replacementString?.contains("\n") == true || (affectedCharRange.length > 0 && NSMaxRange(affectedCharRange) <= storage.length
+            && nsString.substring(with: affectedCharRange).contains("\n")) { linesShifted = true }
         if !internalEdit, !undoing, !guardTableEdit(affectedCharRange) { return false }
         if !internalEdit, !undoing, let s = replacementString, !s.isEmpty, s != "\n", storage.length > 0 {
             let pr = paragraphRange(containing: affectedCharRange.location)

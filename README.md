@@ -35,6 +35,8 @@
 | **Toolbar** | One-click buttons for every format. The buttons you are using light up |
 | **Look** | Warm paper theme with an amber accent, IBM Plex Sans Thai fonts, light and dark mode |
 | **Zoom** | View → Zoom In / Zoom Out / Actual Size (70%–200%, remembered). Only the display changes, never the file |
+| **Copy & paste** | ⌘C keeps headings, lists and formatting when pasting into Notion, Google Docs or Mail. ⇧⌘C (Copy as Markdown) copies plain Markdown text; with nothing selected it copies the whole note |
+| **Text Replacement** | Your macOS Text Replacements (System Settings → Keyboard) work while typing, except inside code |
 | **Windows** | Multiple windows and tabs, file versions, find (⌘F) |
 
 ## Download and install
@@ -84,6 +86,7 @@ Type these at the start of a line and they turn into formatting. Press ⌘Z to u
 | Insert YouTube video | ⌃⌘Y |
 | Insert divider | ⌃⌘- |
 | Open link | ⌥↩ |
+| Copy as Markdown | ⇧⌘C |
 | Indent / Outdent list item | Tab / ⇧Tab |
 | Line break inside a list item | ⇧↩ |
 | Show / hide toolbar | ⌥⌘T |
