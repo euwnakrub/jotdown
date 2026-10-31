@@ -38,6 +38,7 @@
 | **Copy & paste** | ⌘C keeps headings, lists and formatting when pasting into Notion, Google Docs or Mail. ⇧⌘C (Copy as Markdown) copies plain Markdown text; with nothing selected it copies the whole note |
 | **Text Replacement** | Your macOS Text Replacements (System Settings → Keyboard) work while typing, except inside code |
 | **Windows** | Multiple windows and tabs, file versions, find (⌘F) |
+| **Quick Look** | Select a `.md` file in Finder and press Space to preview it as it looks in Jotdown |
 
 ## Download and install
 
@@ -47,6 +48,8 @@
    - **macOS 14 Sonoma:** right-click the app, choose **Open**, then click **Open** again.
    - **macOS 15 Sequoia or later:** right-click → Open no longer works. Open Jotdown once (it is blocked), then go to **System Settings → Privacy & Security**, scroll down to the message about Jotdown, click **Open Anyway** and enter your password.
    - **Terminal alternative:** `xattr -dr com.apple.quarantine /Applications/Jotdown.app`
+
+**Quick Look preview:** open Jotdown once after installing so macOS finds its previewer. If another app (such as Obsidian) still previews your `.md` files, go to **System Settings → General → Login Items & Extensions → Quick Look** and turn on Jotdown and turn off the other app.
 
 Jotdown requires **macOS 14 Sonoma or later** and runs on **Apple silicon Macs only** (M1 and later).
 

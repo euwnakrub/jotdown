@@ -1,5 +1,8 @@
 import AppKit
 
+// รันใน Contents/PlugIns/JotdownQuickLook.appex = Quick Look extension (ดู QuickLookPreview.swift)
+if QuickLookExtension.isRunningAsExtension { QuickLookExtension.main() }
+
 // ทดสอบความเร็ว: Jot --bench <ไฟล์.md>  (parse + สร้าง text storage + serialize)
 if let i = CommandLine.arguments.firstIndex(of: "--bench"), i + 1 < CommandLine.arguments.count,
    let text = try? String(contentsOfFile: CommandLine.arguments[i + 1], encoding: .utf8) {

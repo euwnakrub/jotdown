@@ -85,6 +85,55 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+# Quick Look extension (กด spacebar ที่ไฟล์ .md ใน Finder): ไบนารีเดียวกับแอป
+#   main.swift เห็นว่ารันใน .appex จึงเรียก NSExtensionMain -> QuickLookPreview.swift
+#   ต้องเซ็นพร้อม sandbox (ไม่งั้น Quick Look ไม่โหลด) และเซ็นก่อนตัวแอป
+QL_ID="$BUNDLE_ID.quicklook"
+APPEX="$APP/Contents/PlugIns/JotdownQuickLook.appex"
+mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources/Fonts"
+cp "$BIN" "$APPEX/Contents/MacOS/JotdownQuickLook"
+cp "$ROOT"/Resources/Fonts/* "$APPEX/Contents/Resources/Fonts/"
+cat > "$APPEX/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key><string>$QL_ID</string>
+  <key>CFBundleName</key><string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key><string>$APP_NAME</string>
+  <key>CFBundleExecutable</key><string>JotdownQuickLook</string>
+  <key>CFBundlePackageType</key><string>XPC!</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionPointIdentifier</key><string>com.apple.quicklook.preview</string>
+    <key>NSExtensionPrincipalClass</key><string>JotdownQuickLookPreview</string>
+    <key>NSExtensionAttributes</key>
+    <dict>
+      <key>QLSupportedContentTypes</key>
+      <array><string>net.daringfireball.markdown</string><string>public.markdown</string></array>
+      <key>QLSupportsSearchableItems</key><false/>
+    </dict>
+  </dict>
+</dict>
+</plist>
+PLIST
+QL_ENT="$ROOT/build/quicklook.entitlements"
+cat > "$QL_ENT" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key><true/>
+  <key>com.apple.security.files.user-selected.read-only</key><true/>
+  <key>com.apple.security.network.client</key><true/>
+</dict>
+</plist>
+PLIST
+
 # เซ็นด้วยตัวตนคงที่ (./make-signing-cert.sh) เพื่อให้ Keychain ไม่ถามซ้ำทุก build
 SIGN_CN="${SIGNING_CN:-$APP_NAME Local Signing}"
 SIGN_HASH="$(security find-identity -p codesigning ${KEYCHAIN:+"$KEYCHAIN"} 2>/dev/null | awk -v cn="\"$SIGN_CN\"" 'index($0, cn) {print $2; exit}')"
@@ -92,6 +141,8 @@ sign_stable() {
   # self-signed ไม่อยู่ใน chain ที่ trust -> designated requirement ปกติเป็น cdhash (เปลี่ยนทุก build)
   # จึงกำหนดเองให้อิง identifier + SHA-1 ของใบรับรอง ซึ่งคงที่ข้าม build
   # ไบนารีช่วยใน Resources ต้องเซ็นแยกก่อน (identifier ของตัวเอง) แล้วค่อยเซ็นแอป
+  codesign --force ${KEYCHAIN:+--keychain "$KEYCHAIN"} --sign "$SIGN_HASH" --identifier "$QL_ID" --entitlements "$QL_ENT" \
+    -r="designated => identifier \"$QL_ID\" and certificate leaf = H\"$SIGN_HASH\"" "$APPEX" || return 1
   codesign --force ${KEYCHAIN:+--keychain "$KEYCHAIN"} --sign "$SIGN_HASH" --identifier "$BUNDLE_ID" \
     -r="designated => identifier \"$BUNDLE_ID\" and certificate leaf = H\"$SIGN_HASH\"" "$APP"
 }
@@ -103,7 +154,9 @@ fi
 if [ $SIGNED = 0 ]; then
   echo "== codesign (ad-hoc)"
   [ -n "$SIGN_HASH" ] || echo "   คำใบ้: รัน ./make-signing-cert.sh ครั้งเดียว เพื่อให้ Keychain ไม่ถามรหัสผ่านซ้ำทุกครั้งที่ build"
-  codesign --force --deep --sign - "$APP"
+  # ห้ามใช้ --deep: จะเซ็น .appex ใหม่โดยไม่มี entitlements ของ sandbox
+  codesign --force --sign - --identifier "$QL_ID" --entitlements "$QL_ENT" "$APPEX"
+  codesign --force --sign - "$APP"
 fi
 codesign --verify --deep --strict "$APP"
 
