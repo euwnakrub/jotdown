@@ -135,3 +135,11 @@
 
 ## หัวตารางใช้ Plex Sans Thai (2026-10-30)
 - เซลล์แถว 0 ใช้ `Fonts.heading(.bold)` (IBM Plex Sans Thai ไม่มีหัว) แทน Looped; เนื้อหาในตารางยังเป็น Looped. อยู่ใน `Theme.font(for:inline:)` จุดเดียว (restyle/zoom/แถว-คอลัมน์ใหม่จึงได้ผลเอง); inline code ใน header ไม่เปลี่ยน; แก้ key ของ font cache ให้แยก header ออกจาก bold ปกติ. เทสต์: `TableHeaderFontTests`
+
+## เว็บไซต์ (landing page, 2026-11-01)
+- อยู่ใน `site/` เป็นไฟล์ static ล้วน (`index.html`, `styles.css`, `app.js`) ไม่มีขั้น build
+- ข้อความไทย/อังกฤษอยู่ใน `app.js` (ตัวแปร `T`) เลือกภาษาอัตโนมัติจาก `navigator.languages` และจำภาษาที่ผู้ใช้กดสลับไว้ใน localStorage
+- แอนิเมชันเดโมเขียนด้วย JS (`play()` ใน `app.js`) ไม่ใช่ไฟล์วิดีโอ ข้อความที่พิมพ์อยู่ใน `DEMO`; ผู้ใช้ที่ตั้ง reduce motion จะเห็นภาพสุดท้ายนิ่งๆ
+- ปุ่มดาวน์โหลดชี้ไป `releases/latest/download/Jotdown.zip` ออกเวอร์ชันใหม่แล้วไม่ต้องแก้เว็บ (เลขเวอร์ชันดึงจาก GitHub API)
+- Deploy: Vercel โปรเจกต์ `jotdown-app` → https://jotdown-app.vercel.app (`vercel.json` ชี้ไปที่ `site/`, `.vercelignore` อัปโหลดแค่ `site/`) — มี `netlify.toml` ไว้ถ้าย้ายไป Netlify
+- ดูในเครื่อง: `cd site && python3 -m http.server 8765` แล้วเปิด http://localhost:8765

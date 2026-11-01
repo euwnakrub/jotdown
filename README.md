@@ -10,6 +10,12 @@
 </p>
 
 <p align="center">
+  <a href="https://jotdown-app.vercel.app"><b>Website</b></a> ·
+  <a href="https://github.com/euwnakrub/jotdown/releases/latest/download/Jotdown.zip"><b>Download</b></a> ·
+  <a href="https://jotdown-app.vercel.app/#install"><b>Install guide (English / ไทย)</b></a>
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
     <img src="docs/screenshot-light.png" width="800" alt="Jotdown editing a Kyoto trip note with a checklist, a budget table, hotel details in a code block, a numbered day plan and a quote">
@@ -44,6 +50,8 @@
 | **Quick Look** | Select a `.md` file in Finder and press Space to preview it as it looks in Jotdown |
 
 ## Download and install
+
+New to Mac apps from outside the App Store? The [website](https://jotdown-app.vercel.app/#install) has the same steps with pictures, in English and Thai.
 
 1. Download `Jotdown.zip` from the [Releases](../../releases) page and unzip it.
 2. Move **Jotdown.app** to your Applications folder.
