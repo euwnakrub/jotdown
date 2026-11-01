@@ -10,7 +10,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="720" alt="Jotdown editor window with the formatting toolbar">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+    <img src="docs/screenshot-light.png" width="800" alt="Jotdown editing a Kyoto trip note with a checklist, a budget table, hotel details in a code block, a numbered day plan and a quote">
+  </picture>
 </p>
 
 ## Why Jotdown?
