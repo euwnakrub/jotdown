@@ -22,7 +22,9 @@
   --k-str: #2E6B2E;
   --k-mark: #A8350A;
   --radius: 14px;
-  --font: "IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  /* same pairing as the app: Looped for body text, Plex Sans Thai for headings */
+  --font: "IBM Plex Sans Thai Looped", "IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-head: "IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: light dark;
 }
@@ -66,6 +68,7 @@ body {
 }
 img { max-width: 100%; height: auto; }
 a { color: var(--link); }
+h1, h2, h3, .blk.h1, .brand, .num, .btn { font-family: var(--font-head); }
 h1, h2, h3 { line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
 kbd {
   font-family: var(--mono);
