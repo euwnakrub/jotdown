@@ -316,22 +316,22 @@ html[lang="th"] .hero h1 { letter-spacing: 0; line-height: 1.3; }
 .file { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; }
 .zip { width: 46px; height: 56px; border-radius: 4px; background: linear-gradient(var(--muted) 0 0) 50% 0 / 4px 60% no-repeat, var(--code-bg); border: 1px solid var(--border-strong); }
 .arrow { font-size: 26px; color: var(--muted); }
-.finder { display: flex; padding: 0; overflow: hidden; max-width: 480px; height: 170px; position: relative; }
-.side { width: 170px; background: var(--bg-alt); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+.finder { --sb: 170px; display: flex; padding: 0; overflow: hidden; max-width: 480px; height: 170px; position: relative; }
+.side { width: var(--sb); flex: none; background: var(--bg-alt); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
 .side-h { font-size: 11px; font-weight: 600; color: var(--muted); padding: 0 8px; }
 .side-i { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; }
-.side-i svg { width: 14px; height: 14px; color: var(--link); }
+.side-i svg { width: 15px; height: 15px; flex: none; color: var(--link); }
 .side-i.on { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .side-i.target { animation: target 3s infinite; }
 @keyframes target { 0%, 55% { background: transparent; } 65%, 90% { background: color-mix(in srgb, var(--accent) 35%, transparent); } 100% { background: transparent; } }
-.pane { flex: 1; position: relative; }
-.drag { position: absolute; left: 50%; top: 38px; display: flex; flex-direction: column; align-items: center; font-size: 12px; animation: drag 3s cubic-bezier(.45,0,.3,1) infinite; }
+.pane { flex: 1; }
+/* left/top mark the centre of the icon; the drag ends on the Applications row whatever the sidebar width */
+.drag { position: absolute; left: calc(var(--sb) + (100% - var(--sb)) / 2); top: 64px; transform: translate(-50%, -26px); transform-origin: 50% 26px; display: flex; flex-direction: column; align-items: center; font-size: 12px; pointer-events: none; animation: drag 3s cubic-bezier(.45,0,.3,1) infinite; }
 @keyframes drag {
-  0%, 15% { transform: translate(-50%, 0); opacity: 1; }
-  65% { transform: translate(-290px, -36px) scale(.6); opacity: .85; }
-  80% { transform: translate(-290px, -36px) scale(.6); opacity: 0; }
-  81%, 99% { transform: translate(-50%, 0); opacity: 0; }
-  100% { transform: translate(-50%, 0); opacity: 1; }
+  0%, 15% { left: calc(var(--sb) + (100% - var(--sb)) / 2); top: 64px; transform: translate(-50%, -26px); opacity: 1; }
+  65%, 80% { left: calc(var(--sb) * .62); top: 55px; transform: translate(-50%, -26px) scale(.55); opacity: .85; }
+  88%, 99% { left: calc(var(--sb) * .62); top: 55px; transform: translate(-50%, -26px) scale(.55); opacity: 0; }
+  100% { left: calc(var(--sb) + (100% - var(--sb)) / 2); top: 64px; transform: translate(-50%, -26px); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .drag, .side-i.target, .pulse { animation: none !important; } }
 .tabs { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 3px; margin: 4px 0 14px; flex-wrap: wrap; }
@@ -381,7 +381,7 @@ html[lang="th"] .hero h1 { letter-spacing: 0; line-height: 1.3; }
   .num { width: 36px; height: 36px; font-size: 16px; }
   .step::before { left: 17px; top: 40px; }
   .raw { display: none; }
-  .finder .side { width: 140px; }
+  .finder { --sb: 140px; }
   .tabs { display: flex; width: 100%; }
   .tab { flex: 1; font-size: 14px; padding: 6px 8px; white-space: nowrap; }
 }
