@@ -191,7 +191,7 @@ extension NetworkStubTests { @Suite struct UpdaterTests {
         }
     }
 
-    @Test func appMenuHasCheckForUpdatesAndHelpHasFeedback() {
+    @Test @MainActor func appMenuHasCheckForUpdatesAndHelpHasFeedback() {
         _ = NSApplication.shared
         let menu = MainMenu.build()
         let appItems = menu.items.first?.submenu?.items.map(\.title) ?? []
