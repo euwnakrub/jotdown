@@ -245,8 +245,18 @@ extension EditorTextView {
         onLinkHover?(nil)
     }
 
-    // MARK: - URL เปล่า + เว้นวรรค = ลิงก์อัตโนมัติ
-    /// เรียกก่อนแทรกช่องว่าง: ถ้าคำก่อนเคอร์เซอร์เป็น http(s)://… ที่ยังไม่เป็นลิงก์ ให้ทำเป็นลิงก์
+    // MARK: - พิมพ์ URL แล้วเว้นวรรค / Enter / ⇧Enter / Tab = ลิงก์อัตโนมัติ
+    /// คำที่พิมพ์เป็น URL ไหม: คืน URL ปลายทาง (http(s)://… ตามเดิม, www.… เติม https://) หรือ nil
+    static func autolinkTarget(for word: String) -> String? {
+        if word.count > 8, word.range(of: #"^https?://[^\s]+$"#, options: [.regularExpression, .caseInsensitive]) != nil { return word }
+        if word.range(of: #"^www\.[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}([/?#][^\s]*)?$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return "https://" + word
+        }
+        return nil
+    }
+
+    /// เรียกก่อนแทรกช่องว่าง/ขึ้นบรรทัด: ถ้าคำก่อนเคอร์เซอร์เป็น URL ที่ยังไม่เป็นลิงก์ ให้ทำเป็นลิงก์
+    /// ตัดวงเล็บ/เครื่องหมายคำพูดหน้าคำ และวรรคตอนท้ายคำออก (เช่น "(https://x.y)." ได้แค่ https://x.y)
     func autolinkWordBeforeCaret() {
         let caret = selectedRange().location
         guard selectedRange().length == 0, caret > 0, blockKindAtCaret.allowsInline else { return }
@@ -254,17 +264,19 @@ extension EditorTextView {
         var start = caret
         while start > 0 {
             let c = n.character(at: start - 1)
-            if c == 0x20 || c == 0x09 || c == 0x0A || c == 0x2028 { break }
+            if c == 0x20 || c == 0x09 || c == 0x0A || c == 0x2028 || c == 0xA0 { break }
             start -= 1
         }
+        func isOneOf(_ chars: String, _ ch: unichar) -> Bool { chars.unicodeScalars.contains { $0.value == UInt32(ch) } }
+        while start < caret, isOneOf("(<[\"'", n.character(at: start)) { start += 1 }
         var end = caret
-        while end > start, let ch = Optional(n.character(at: end - 1)), ".,;:!?)".unicodeScalars.contains(where: { $0.value == UInt32(ch) }) { end -= 1 }
+        while end > start, isOneOf(".,;:!?)>]*_~\"'", n.character(at: end - 1)) { end -= 1 }
         let range = NSRange(location: start, length: end - start)
-        guard range.length > 8 else { return }
+        guard range.length >= 7 else { return }
         let word = n.substring(with: range)
-        guard word.range(of: #"^https?://[^\s]+$"#, options: .regularExpression) != nil, storage.link(at: range.location) == nil else { return }
+        guard let url = Self.autolinkTarget(for: word), storage.link(at: range.location) == nil, !isCodeText(range) else { return }
         let keep = selectedRange()
-        applyLink(word, in: range)
+        applyLink(url, in: range)
         setSelectedRange(keep)
     }
 }

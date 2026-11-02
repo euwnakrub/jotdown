@@ -39,7 +39,7 @@
 | **Tables** | Edit cells directly, use Tab to move between cells, add and remove rows and columns, set column alignment |
 | **Images** | Drag in images or paste screenshots. Images are copied into an `assets/` folder next to your note |
 | **YouTube** | Paste a YouTube link on its own line (or use Format → Insert YouTube Video…) to get a video card with thumbnail and title. Click play to watch right in the note. The file keeps the plain link, so it still works anywhere. A link in the middle of a sentence stays an ordinary link |
-| **Links** | Hover a link to open, copy, edit or remove it. Open with ⌥↩ or ⌘-click. Pasted URLs become links automatically |
+| **Links** | Hover a link to open, copy, edit or remove it. Open with ⌥↩ or ⌘-click. Web addresses become links automatically when you paste them, or when you type one (`https://…` or `www.…`) and press Space, Return or Tab |
 | **Obsidian** | `[[wikilinks]]`, `![[embedded images]]` and front matter work and are saved back exactly as written |
 | **Toolbar** | One-click buttons for every format. The buttons you are using light up |
 | **Look** | Warm paper theme with an amber accent, IBM Plex Sans Thai fonts, light and dark mode |

@@ -87,6 +87,7 @@
 - ⌥↩ = Open Link, Format → Open Link / Copy Link Address, คลิกขวาบนลิงก์, ⌘-คลิก, cursor มือเมื่อกด ⌘
 - ปลายทาง (`LinkResolver`): http(s)/mailto, โดเมนไม่มี scheme → https://, path สัมพัทธ์/ไฟล์ (.md เปิดใน Jotdown), `#หัวข้อ` (slug แบบ GitHub รองรับไทย), ไม่พบไฟล์ = "File not found" ในแถบ, เอกสารไม่มีชื่อ = "Save the document to open relative links"
 - URL เปล่า + เว้นวรรค = ลิงก์อัตโนมัติ (เขียนกลับเป็น URL เปล่า, อ่านไฟล์แล้วกลับเป็นลิงก์) — `LinkTests`
+  - (2026-11-02) ทำงานเมื่อกด Enter / ⇧Enter / Tab ด้วย (`autolinkWordBeforeCaret()` ใน `insertNewline`, `insertTab`, `insertText` ของ U+2028); `www.โดเมน.tld/…` เป็นลิงก์ `https://www.…` (เขียนเป็น `[www…](https://www…)`); ตัด `( < [ " '` หน้าคำและวรรคตอนท้ายคำ; ไม่ทำในโค้ด — `bareURLBecomesLinkOnEnterTabAndShiftEnter`, `wwwAndWrappedURLsBecomeLinks`
 
 ### Obsidian (2026-10-29)
 - รองรับ: `![[รูป.jpg]]`, `![[รูป.png|300]]`, `![[รูป.png|300x200]]` (รูปจริง ใช้ระบบรูปเดิม), `![[โน้ต]]`/`![[โน้ต#หัวข้อ]]` (การ์ดลิงก์ ไม่ดึงเนื้อหา), `[[โน้ต]]`, `[[โน้ต|ข้อความ]]`, `[[โน้ต#หัวข้อ]]`, `[[#หัวข้อ]]` (แสดงเป็นลิงก์ ไม่เห็น `[[ ]]` ใช้แถบลอย/⌥↩/⌘-คลิก/คลิกขวาเหมือนลิงก์ปกติ; Edit แก้ `โน้ต#หัวข้อ|ข้อความ`); โน้ตที่ไม่มี = ลิงก์สีจาง, Open = "Note not found" ไม่สร้างไฟล์ใหม่

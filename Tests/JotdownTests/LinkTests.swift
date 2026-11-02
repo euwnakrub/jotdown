@@ -166,6 +166,53 @@ final class FakeOpener: LinkOpening {
         #expect(d2.currentMarkdown == "see https://x.y/z. ok\n")
     }
 
+    @Test func bareURLBecomesLinkOnEnterTabAndShiftEnter() {
+        // Enter ท้ายบรรทัด (กรณีที่พบบ่อยที่สุด)
+        let (d1, v1, _) = editor("")
+        v1.textView.type("https://example.com/x\nnext")
+        #expect(d1.textStorage.link(at: 0) == "https://example.com/x")
+        #expect(d1.textStorage.link(at: v1.textView.nsString.range(of: "next").location) == nil)
+        #expect(d1.currentMarkdown == "https://example.com/x\n\nnext\n")
+        // ในลิสต์ + Enter
+        let (d2, v2, _) = editor("")
+        v2.textView.type("- see https://a.b/c\nmore")
+        #expect(d2.textStorage.link(at: v2.textView.nsString.range(of: "https").location) == "https://a.b/c")
+        // ⇧Enter (ขึ้นบรรทัดในย่อหน้าเดิม)
+        let (d3, v3, _) = editor("")
+        v3.textView.type("https://a.b/c")
+        v3.textView.insertText(softBreakString, replacementRange: v3.textView.selectedRange())
+        #expect(d3.textStorage.link(at: 0) == "https://a.b/c")
+        // Tab
+        let (d4, v4, _) = editor("")
+        v4.textView.type("https://a.b/c\t")
+        #expect(d4.textStorage.link(at: 0) == "https://a.b/c")
+    }
+
+    @Test func wwwAndWrappedURLsBecomeLinks() {
+        let (d1, v1, _) = editor("")
+        v1.textView.type("go to www.example.com/docs ok")
+        let loc = v1.textView.nsString.range(of: "www").location
+        #expect(d1.textStorage.link(at: loc) == "https://www.example.com/docs")
+        #expect(d1.currentMarkdown == "go to [www.example.com/docs](https://www.example.com/docs) ok\n")
+        // วงเล็บ/คำพูดรอบ URL ไม่รวมในลิงก์
+        let (d2, v2, _) = editor("")
+        v2.textView.type("(https://x.y/z). ok")
+        let r = v2.textView.nsString.range(of: "https://x.y/z")
+        #expect(d2.textStorage.link(at: r.location) == "https://x.y/z")
+        #expect(d2.textStorage.link(at: r.location - 1) == nil)
+        #expect(d2.textStorage.link(at: NSMaxRange(r)) == nil)
+        // ไม่ใช่ URL / ในโค้ด = ไม่เป็นลิงก์
+        #expect(EditorTextView.autolinkTarget(for: "www.example") == nil)
+        #expect(EditorTextView.autolinkTarget(for: "example.com") == nil)
+        #expect(EditorTextView.autolinkTarget(for: "HTTPS://X.Y/Z") == "HTTPS://X.Y/Z")
+        let (d3, v3, _) = editor("```\nx\n```\n")
+        #expect(d3.textStorage.blockKind(at: 0).isCodeLike)
+        v3.textView.select(1)
+        v3.textView.type(" https://a.b/c ")
+        #expect(d3.textStorage.link(at: 3) == nil)
+        #expect(d3.currentMarkdown.contains("x https://a.b/c "))
+    }
+
     @Test func autolinkAndMarkdownLinkRoundTrip() {
         for md in ["https://example.com/a?b=1\n", "[x](https://x.y)\n", "[https://x.y/](https://x.y/)\n".replacingOccurrences(of: "[https://x.y/](https://x.y/)", with: "https://x.y/")] {
             #expect(MarkdownSerializer.serialize(MarkdownParser.parse(md)) == md, Comment(rawValue: md))

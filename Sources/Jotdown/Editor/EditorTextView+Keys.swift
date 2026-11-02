@@ -40,7 +40,7 @@ extension EditorTextView {
         let s = (string as? String) ?? (string as? NSAttributedString)?.string ?? ""
         let sel = selectedRange()
         if !internalEdit, sel.length == 0, s.count == 1, replacementRange.location == NSNotFound || replacementRange == sel {
-            if s == " " { autolinkWordBeforeCaret() }
+            if s == " " || s == softBreakString { autolinkWordBeforeCaret() }
             if s == " ", applyBlockShortcut() { return }
             if "*_`~".contains(s), applyInlineShortcut(typed: s) { return }
         }
@@ -119,6 +119,7 @@ extension EditorTextView {
 
     // MARK: - Enter
     override func insertNewline(_ sender: Any?) {
+        if !internalEdit { autolinkWordBeforeCaret() }
         // ⇧Enter ในแอปจริงมาทาง insertNewline: พร้อม modifier ของเหตุการณ์ปัจจุบัน
         if let e = NSApp.currentEvent, e.type == .keyDown, e.modifierFlags.contains(.shift), shiftEnterIsSoftBreak {
             insertText(softBreakString, replacementRange: selectedRange())
@@ -294,7 +295,7 @@ extension EditorTextView {
     }
 
     // MARK: - Tab / ⇧Tab ระดับลิสต์
-    override func insertTab(_ sender: Any?) { if blockKindAtCaret.isTableCell { moveCell(by: 1); return }; if !changeListLevel(by: 1) { super.insertTab(sender) } }
+    override func insertTab(_ sender: Any?) { if !internalEdit { autolinkWordBeforeCaret() }; if blockKindAtCaret.isTableCell { moveCell(by: 1); return }; if !changeListLevel(by: 1) { super.insertTab(sender) } }
     override func insertBacktab(_ sender: Any?) { if blockKindAtCaret.isTableCell { moveCell(by: -1); return }; if !changeListLevel(by: -1) { super.insertBacktab(sender) } }
 
     @discardableResult
