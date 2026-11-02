@@ -22,7 +22,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.jotDocuments.forEach { $0.saveNow() }
         }
+        MainActor.assumeIsolated { Updater.shared.start() }
     }
+
+    // MARK: - อัปเดต / feedback
+    @MainActor @objc func jotCheckForUpdates(_ sender: Any?) { Updater.shared.checkNow() }
+    @MainActor @objc func jotSendFeedback(_ sender: Any?) { FeedbackWindowController.show() }
 
     /// เมนู ไฟล์ > แท็บใหม่ (⌘T): สร้างเอกสารใหม่แล้วเพิ่มเป็นแท็บของหน้าต่างปัจจุบัน
     @objc func newWindowForTab(_ sender: Any?) {

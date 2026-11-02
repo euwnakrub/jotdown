@@ -48,6 +48,8 @@
 | **Text Replacement** | Your macOS Text Replacements (System Settings → Keyboard) work while typing, except inside code |
 | **Windows** | Multiple windows and tabs, file versions, find (⌘F) |
 | **Quick Look** | Select a `.md` file in Finder and press Space to preview it as it looks in Jotdown |
+| **Updates** | Jotdown checks for a new version once a day and installs it for you after asking. Jotdown → Check for Updates… checks right away |
+| **Feedback** | Help → Send Feedback… sends a message straight to the developer |
 
 ## Download and install
 

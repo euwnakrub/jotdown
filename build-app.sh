@@ -10,7 +10,7 @@ APP_NAME="Jotdown"
 EXEC="Jotdown"
 BUNDLE_ID="com.euw.jotdown"
 APP="$ROOT/build/$APP_NAME.app"
-VERSION="${APP_VERSION:-0.1.0}"
+VERSION="${APP_VERSION:-$(tr -d "[:space:]" < "$ROOT/VERSION")}"
 
 echo "== swift build -c release"
 swift build -c release

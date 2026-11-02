@@ -141,5 +141,26 @@
 - ข้อความไทย/อังกฤษอยู่ใน `app.js` (ตัวแปร `T`) เลือกภาษาอัตโนมัติจาก `navigator.languages` และจำภาษาที่ผู้ใช้กดสลับไว้ใน localStorage
 - แอนิเมชันเดโมเขียนด้วย JS (`play()` ใน `app.js`) ไม่ใช่ไฟล์วิดีโอ ข้อความที่พิมพ์อยู่ใน `DEMO`; ผู้ใช้ที่ตั้ง reduce motion จะเห็นภาพสุดท้ายนิ่งๆ
 - ปุ่มดาวน์โหลดชี้ไป `releases/latest/download/Jotdown.zip` ออกเวอร์ชันใหม่แล้วไม่ต้องแก้เว็บ (เลขเวอร์ชันดึงจาก GitHub API)
-- Deploy: Vercel โปรเจกต์ `jotdown-app` → https://jotdown-app.vercel.app (`vercel.json` ชี้ไปที่ `site/`, `.vercelignore` อัปโหลดแค่ `site/`) — มี `netlify.toml` ไว้ถ้าย้ายไป Netlify
+- Deploy: Vercel โปรเจกต์ `jotdown-app` → https://jotdown-app.vercel.app (`vercel.json` ชี้ไปที่ `site/`, `.vercelignore` อัปโหลดแค่ `site/` กับ `api/`) — มี `netlify.toml` ไว้ถ้าย้ายไป Netlify (แต่ `api/feedback.js` ใช้ได้บน Vercel เท่านั้น)
 - ดูในเครื่อง: `cd site && python3 -m http.server 8765` แล้วเปิด http://localhost:8765
+
+## Feedback + อัปเดตอัตโนมัติ (2026-11-02)
+
+### Feedback (Help → Send Feedback…)
+- `App/Feedback.swift`: หน้าต่างพิมพ์ข้อความ + อีเมลผู้ส่ง (ไม่บังคับ) ส่ง JSON `{message, email, appVersion, osVersion, model}` ไป `https://jotdown-app.vercel.app/api/feedback` (ทดสอบกับที่อื่นด้วย env `JOTDOWN_FEEDBACK_URL`) พร้อม header `X-Jotdown-Client: mac` ไม่ส่งเนื้อหาโน้ตใด ๆ
+- ส่งไม่ได้ → ถามว่าจะ "Send by Email…" ไหม = เปิดแอปอีเมลด้วย `mailto:euwnakrub@gmail.com` พร้อมข้อความ
+- ฝั่งเว็บ `api/feedback.js` (Vercel function): ตรวจข้อมูล, จำกัด 5 ข้อความ/IP/10 นาที, ส่งอีเมลผ่าน Resend ถึง `FEEDBACK_TO` (ค่าเริ่มต้น euwnakrub@gmail.com) ตั้ง reply-to เป็นอีเมลผู้ส่ง
+- **ตั้งค่าครั้งเดียว:** สมัคร resend.com ด้วย euwnakrub@gmail.com → สร้าง API key → `vercel env add RESEND_API_KEY production` → deploy production ใหม่ (ยังไม่ตั้ง = function ตอบ 503 แอปจะเสนอส่งทางอีเมลแทน)
+  - ผู้ส่งเริ่มต้นคือ `onboarding@resend.dev` ซึ่ง Resend ยอมให้ส่งถึงอีเมลเจ้าของบัญชีเท่านั้น ถ้าจะส่งถึงอีเมลอื่นต้องยืนยันโดเมนแล้วตั้ง `FEEDBACK_FROM`
+
+### อัปเดตอัตโนมัติ (Jotdown → Check for Updates…)
+- `App/Updater.swift`: อ่าน GitHub API `releases/latest` ของ `euwnakrub/jotdown` เทียบ tag (`v0.3.0`) กับ `CFBundleShortVersionString`
+- เช็คเอง 5 วินาทีหลังเปิดแอปและทุก 6 ชั่วโมง แต่ไม่เกินวันละครั้ง (`JotUpdateLastCheck`); ปิดได้ด้วยช่องติ๊ก "Automatically check for updates" ในหน้าต่างอัปเดต (`JotUpdateAutoCheck`); "Skip This Version" จำใน `JotUpdateSkippedVersion` (กดเช็คเองจากเมนูยังเห็น)
+- ไม่เช็คเมื่อมี `JOTDOWN_TESTING` หรือไม่ได้รันจาก `.app`
+- ติดตั้ง (`UpdateInstaller`): ดาวน์โหลด `Jotdown.zip` ไปโฟลเดอร์ชั่วคราวบน volume เดียวกับแอป → ตรวจ sha256 กับ `digest` ที่ GitHub ให้ → `ditto -x -k` → ตรวจ bundle id `com.euw.jotdown` + เวอร์ชันตรงกับ tag + ลายเซ็นสมบูรณ์ (`SecStaticCodeCheckValidity` แบบ strict) → `replaceItemAt` แทนแอปเดิม → เปิดแอปใหม่หลังตัวเก่าปิด (เอกสารบันทึกใน `applicationShouldTerminate`)
+  - ลายเซ็น: แอปปัจจุบันเป็น ad-hoc → ต้องการแค่ identifier; ถ้าวันหนึ่งเซ็นด้วยใบรับรองคงที่ (`make-signing-cert.sh`) จะบังคับให้ release ต่อไปเซ็นด้วยใบเดียวกัน
+  - แอปรันจาก AppTranslocation (ยังไม่ย้ายเข้า Applications) หรือโฟลเดอร์เขียนไม่ได้ → บอกผู้ใช้และเปิดหน้าดาวน์โหลดแทน
+- เลขเวอร์ชันอยู่ในไฟล์ `VERSION` (build-app.sh อ่านจากที่นี่ `APP_VERSION` ยังทับได้)
+- **ออก release:** แก้ `VERSION` แล้ว commit → `./release.sh` (เทสต์ → build → push → `gh release create vX.Y.Z build/Jotdown.zip`) ข้อความ release แสดงในหน้าต่างอัปเดต (`NOTES="…" ./release.sh` ไม่ใส่ = `--generate-notes`)
+- ผู้ใช้ 0.2.0 ลงไปยังไม่มีตัวอัปเดต ต้องดาวน์โหลด 0.3.0 เองครั้งเดียว
+- เทสต์: `UpdaterTests` (เทียบเวอร์ชัน, อ่าน JSON, ติดตั้งจาก zip ของแอปปลอมที่เซ็น ad-hoc จริง, ปฏิเสธไฟล์เสีย/แอปอื่น/เวอร์ชันผิด/ลายเซ็นถูกแก้), `FeedbackTests` (ตรวจข้อความ, request, mailto, snapshot `feedback-window-*`) ใช้ `StubURLProtocol` ร่วมกันจึงอยู่ใต้ `NetworkStubTests` แบบ serialized

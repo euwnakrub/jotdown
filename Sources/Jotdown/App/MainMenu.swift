@@ -28,6 +28,7 @@ enum MainMenu {
         NSApp.servicesMenu = services
         main.addItem(submenu(name, [
             item("About \(name)", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+            item("Check for Updates…", NSSelectorFromString("jotCheckForUpdates:")),
             .separator(),
             servicesItem,
             .separator(),
@@ -169,6 +170,7 @@ enum MainMenu {
 
         let helpMenu = NSMenu(title: "Help")
         helpMenu.addItem(item("Jotdown Help", #selector(NSApplication.showHelp(_:)), "?"))
+        helpMenu.addItem(item("Send Feedback…", NSSelectorFromString("jotSendFeedback:")))
         let helpItem = NSMenuItem(title: "Help", action: nil, keyEquivalent: "")
         helpItem.submenu = helpMenu
         main.addItem(helpItem)
