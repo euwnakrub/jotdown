@@ -243,6 +243,10 @@ extension NSMutableAttributedString {
                 if let j = attrs[.jotImage] { want[.jotImage] = j }
                 if let w = attrs[.jotWiki] { want[.jotWiki] = w }
                 if let v = attrs[.jotVideo] { want[.jotVideo] = v }
+                // อีโมจิ/ตัวที่ฟอนต์เราไม่มี: ระบบสลับเป็นฟอนต์สำรอง (เช่น Apple Color Emoji) เอง — ถ้ารีเซ็ตกลับทุกครั้งที่พิมพ์
+                // editedRange จะโตจนเคอร์เซอร์กระโดดและการวาดเพี้ยน จึงคงฟอนต์สำรองไว้ถ้าขนาดเท่าเดิม
+                if let have = attrs[.font] as? NSFont, let w = want[.font] as? NSFont, have != w, have.pointSize == w.pointSize,
+                   !Self.font(w, covers: ns.substring(with: r)) { want[.font] = have }
                 if !(attrs as NSDictionary).isEqual(to: want) { updates.append((r, want)) }
             }
         }
@@ -253,6 +257,14 @@ extension NSMutableAttributedString {
         }
         for (r, a) in updates { setAttributes(a, range: r) }
         if highlight, case .codeBlock(let lang) = kind, contentEnd > pr.location { applySyntaxColors(in: NSRange(location: pr.location, length: contentEnd - pr.location), language: lang) }
+    }
+
+    /// ฟอนต์มี glyph ครบทุกตัวในข้อความไหม (ไม่ครบ = ระบบต้องใช้ฟอนต์สำรอง)
+    static func font(_ font: NSFont, covers text: String) -> Bool {
+        let chars = Array(text.utf16)
+        if chars.isEmpty { return true }
+        var glyphs = [CGGlyph](repeating: 0, count: chars.count)
+        return CTFontGetGlyphsForCharacters(font as CTFont, chars, &glyphs, chars.count)
     }
 
     /// ระบายสีโค้ดทั้งกล่อง (เฉพาะ attribute `.foregroundColor` ที่ต่างจริง) — ไม่แตะข้อความ/markdown ที่บันทึก
