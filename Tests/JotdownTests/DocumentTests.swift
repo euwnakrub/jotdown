@@ -80,6 +80,28 @@ func waitFor(_ timeout: TimeInterval = 5, _ cond: () -> Bool) {
         #expect(doc2.currentMarkdown == "# หัวข้อ\n\nเพิ่มเติม\n")
     }
 
+    /// บันทึกทับไฟล์เดิม: inode ไม่เปลี่ยน (โฟลเดอร์ cloud จะเห็นเป็น "แก้ไฟล์" ไม่ใช่ "ลบ + สร้างใหม่")
+    @Test func autosaveKeepsSameFile() throws {
+        _ = NSApplication.shared
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("d.md")
+        try "# หัวข้อ\n\nเนื้อหายาวๆ ที่ยาวกว่าฉบับใหม่\n".write(to: url, atomically: true, encoding: .utf8)
+        func inode() throws -> Int { try FileManager.default.attributesOfItem(atPath: url.path)[.systemFileNumber] as! Int }
+        let before = try inode()
+        let doc = try JotdownDocument(contentsOf: url, ofType: JotTypes.markdown)
+        for text in ["สั้น", "สั้นกว่า"] {
+            doc.textStorage.replaceCharacters(in: NSRange(location: 0, length: doc.textStorage.length),
+                                              with: NSAttributedString(string: text, attributes: Theme.attributes(for: .paragraph)))
+            var ok = false, done = false
+            doc.saveNow { ok = $0; done = true }
+            waitFor { done }
+            #expect(ok)
+            #expect(try String(contentsOf: url, encoding: .utf8) == text + "\n")
+        }
+        #expect(try inode() == before)
+        #expect(!doc.isDocumentEdited)
+    }
+
     @Test func reloadDoesNotTriggerSave() throws {
         let doc = JotdownDocument()
         doc.load(markdown: "# ก\n\nข\n")

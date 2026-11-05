@@ -146,6 +146,25 @@ final class JotdownDocument: NSDocument, NSTextStorageDelegate {
         return MarkdownFile.encode(md)
     }
 
+    /// บันทึกทับไฟล์เดิมตรงๆ (ไฟล์เดิม inode/docID เดิม) แทน safe-save ที่เขียนไฟล์ใหม่แล้วสลับเข้าแทนที่
+    /// เหตุผล: โฟลเดอร์ cloud แบบ File Provider (Nextcloud ฯลฯ) บางครั้งมองการสลับไฟล์เป็น "ลบไฟล์เดิม + สร้างไฟล์ใหม่"
+    /// ถ้าฝั่ง server ปฏิเสธการลบ (เช่น 423 Locked) macOS จะเลิกลองซ้ำ และเนื้อหาใหม่ไม่ขึ้น server อีกเลย
+    override func writeSafely(to url: URL, ofType typeName: String, for saveOperation: NSDocument.SaveOperationType) throws {
+        guard saveOperation == .autosaveInPlaceOperation || saveOperation == .saveOperation,
+              let current = fileURL, current.standardizedFileURL == url.standardizedFileURL,
+              FileManager.default.isWritableFile(atPath: url.path) else {
+            try super.writeSafely(to: url, ofType: typeName, for: saveOperation)
+            return
+        }
+        let data = try data(ofType: typeName)
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.write(contentsOf: data)
+        try handle.truncate(atOffset: UInt64(data.count))
+        try handle.synchronize()
+        if let w = pendingWritten { syncedMarkdown = w }
+    }
+
     override func write(to url: URL, ofType typeName: String, for saveOperation: NSDocument.SaveOperationType,
                         originalContentsURL absoluteOriginalContentsURL: URL?) throws {
         try super.write(to: url, ofType: typeName, for: saveOperation, originalContentsURL: absoluteOriginalContentsURL)
