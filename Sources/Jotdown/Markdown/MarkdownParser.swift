@@ -35,12 +35,27 @@ enum MarkdownParser {
         func slice(_ a: Int, _ b: Int) -> [String] { a <= b && a >= 1 && b <= lines.count ? Array(lines[(a - 1)...(b - 1)]) : [] }
         func rawBlock(_ ls: [String]) -> ParsedBlock { ParsedBlock(kind: .raw, text: ls.joined(separator: softBreakString)) }
 
+        /// บรรทัดว่างระหว่างบล็อกเกิน 1 บรรทัด = ย่อหน้าว่าง (บรรทัดละ 1 ย่อหน้า) ไม่นับที่หัว/ท้ายเอกสาร
+        var blankRun = 0
+        func emitSpacers() {
+            if blankRun >= 2, !result.isEmpty {
+                result += Array(repeating: ParsedBlock(kind: .paragraph, segments: []), count: blankRun - 1)
+            }
+            blankRun = 0
+        }
+
         /// บรรทัดที่ไม่มีบล็อกใดครอบคลุม (เช่น link reference definition ที่ cmark ไม่ส่งออกมา) เก็บดิบ
         func flushGap(upTo end: Int) {
             guard end > covered else { return }
             var run: [String] = []
             for l in lines[covered..<min(end, lines.count)] {
-                if isBlank(l) { if !run.isEmpty { result.append(rawBlock(run)); run = [] } } else { run.append(l) }
+                if isBlank(l) {
+                    if !run.isEmpty { result.append(rawBlock(run)); run = [] }
+                    blankRun += 1
+                } else {
+                    if run.isEmpty { emitSpacers() }
+                    run.append(l)
+                }
             }
             if !run.isEmpty { result.append(rawBlock(run)) }
         }
@@ -52,6 +67,7 @@ enum MarkdownParser {
             if r.upperBound.column == 1 && end > start { end -= 1 }
             if end <= covered { continue }
             flushGap(upTo: start - 1)
+            emitSpacers()
             let raw = slice(max(start, covered + 1), end)
             result.append(contentsOf: convert(child, raw: raw) ?? [rawBlock(raw)])
             covered = end

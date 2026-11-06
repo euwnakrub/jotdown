@@ -31,7 +31,8 @@ import AppKit
         let tv = vc.textView!
         tv.select(1)
         tv.insertDivider()
-        #expect(doc.currentMarkdown == "ก\n\n---\n\nข\n")
+        // ย่อหน้าว่างใต้เส้นคั่น (ที่ caret อยู่) ถูกบันทึกเป็นบรรทัดว่างเพิ่ม
+        #expect(doc.currentMarkdown == "ก\n\n---\n\n\nข\n")
         tv.type("ใหม่")
         #expect(doc.currentMarkdown == "ก\n\n---\n\nใหม่\n\nข\n")
     }
@@ -52,7 +53,7 @@ import AppKit
         doc.undoManager?.undo()
         #expect(doc.currentMarkdown == "ก\n\nข\n")
         doc.undoManager?.redo()
-        #expect(doc.currentMarkdown == "ก\n\n---\n\nข\n")
+        #expect(doc.currentMarkdown == "ก\n\n---\n\n\nข\n")
     }
 
     @Test func disabledInCodeBlock() {

@@ -26,6 +26,33 @@ func fixture(_ name: String) throws -> String {
         #expect(MarkdownSerializer.serialize(a) == md)
     }
 
+    @Test func emptyParagraphsBetweenBlocksSurviveReopen() {
+        // ย่อหน้า, ว่าง 2 ย่อหน้า, ย่อหน้า -> เปิดใหม่ต้องได้ 4 ย่อหน้าเหมือนเดิม
+        let edited = MarkdownParser.attributedString(from: [
+            ParsedBlock(kind: .paragraph, text: "หนึ่ง"),
+            ParsedBlock(kind: .paragraph, segments: []),
+            ParsedBlock(kind: .paragraph, segments: []),
+            ParsedBlock(kind: .paragraph, text: "สอง"),
+            ParsedBlock(kind: .paragraph, segments: []),
+            ParsedBlock(kind: .heading(2), text: "หัวข้อ"),
+        ])
+        let md = MarkdownSerializer.serialize(edited)
+        #expect(md == "หนึ่ง\n\n\n\nสอง\n\n\n## หัวข้อ\n")
+        let reopened = MarkdownParser.parse(md)
+        #expect(reopened.string == edited.string)
+        #expect(MarkdownSerializer.serialize(reopened) == md)
+    }
+
+    @Test func emptyParagraphsAtEdgesAreNotWritten() {
+        let a = MarkdownParser.attributedString(from: [
+            ParsedBlock(kind: .paragraph, segments: []),
+            ParsedBlock(kind: .paragraph, text: "a"),
+            ParsedBlock(kind: .paragraph, segments: []),
+        ])
+        #expect(MarkdownSerializer.serialize(a) == "a\n")
+        #expect(MarkdownParser.parse("\n\n\na\n\n\n").string == "a")
+    }
+
     @Test func emptyFile() {
         let a = MarkdownParser.parse("")
         #expect(a.length == 0)

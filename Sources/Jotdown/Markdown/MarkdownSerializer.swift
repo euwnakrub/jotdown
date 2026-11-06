@@ -19,28 +19,37 @@ enum MarkdownSerializer {
 
     static func serialize(_ blocks: [ParsedBlock]) -> String {
         var chunks: [String] = []
+        // ย่อหน้าว่างระหว่างบล็อก = บรรทัดว่างเพิ่ม 1 บรรทัดต่อย่อหน้า (ที่หัว/ท้ายเอกสารไม่เขียน)
+        var pendingEmpty = 0
+        func add(_ t: String) {
+            chunks.append(chunks.isEmpty ? t : String(repeating: "\n", count: pendingEmpty) + t)
+            pendingEmpty = 0
+        }
         var i = 0
         while i < blocks.count {
             let b = blocks[i]
+            if b.kind == .paragraph, b.segments.isEmpty {
+                pendingEmpty += 1; i += 1; continue
+            }
             if b.kind.isList {
                 var j = i
                 while j < blocks.count, blocks[j].kind.isList { j += 1 }
-                chunks.append(listText(Array(blocks[i..<j])))
+                add(listText(Array(blocks[i..<j])))
                 i = j; continue
             }
             if b.kind.isTableCell {
                 var j = i + 1
                 while j < blocks.count, case .tableCell(let r, let c, _) = blocks[j].kind, !(r == 0 && c == 0) { j += 1 }
-                if let m = TableModel.from(Array(blocks[i..<j])) { chunks.append(m.markdown()) }
+                if let m = TableModel.from(Array(blocks[i..<j])) { add(m.markdown()) }
                 i = j; continue
             }
             if b.kind == .quote {
                 var j = i
                 while j < blocks.count, blocks[j].kind == .quote { j += 1 }
-                if let t = quoteText(Array(blocks[i..<j])) { chunks.append(t) }
+                if let t = quoteText(Array(blocks[i..<j])) { add(t) }
                 i = j; continue
             }
-            if let t = single(b) { chunks.append(t) }
+            if let t = single(b) { add(t) }
             i += 1
         }
         return chunks.isEmpty ? "" : chunks.joined(separator: "\n\n") + "\n"
