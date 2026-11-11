@@ -27,6 +27,32 @@ extension EditorTextView {
         return NSRange(location: start, length: end - start)
     }
 
+    /// ช่วงของแต่ละแถวในตาราง `tr`: `start` = ต้นเซลล์แรก, `contentEnd` = ท้ายเนื้อหาเซลล์สุดท้าย, `end` = หลังตัวขึ้นบรรทัดของแถว
+    func rowRanges(in tr: NSRange) -> [(start: Int, contentEnd: Int, end: Int)] {
+        var rows: [(start: Int, contentEnd: Int, end: Int)] = []
+        var p = tr.location
+        while p < NSMaxRange(tr) {
+            let one = nsString.paragraphRange(for: NSRange(location: p, length: 0))
+            guard case .tableCell(let r, let c, _) = storage.blockKind(at: one.location) else { break }
+            let ce = NSMaxRange(contentRange(of: one))
+            if c == 0, r == rows.count { rows.append((one.location, ce, NSMaxRange(one))) }
+            else if !rows.isEmpty { rows[rows.count - 1].contentEnd = ce; rows[rows.count - 1].end = NSMaxRange(one) }
+            p = NSMaxRange(one)
+        }
+        return rows
+    }
+
+    /// แถวในตัวตาราง (ไม่ใช่หัวตาราง) ที่ `range` ครอบครบทุกเซลล์ — ใช้เมื่อช่วงไม่ล้นออกนอกแถวเหล่านั้น
+    func fullBodyRows(covered range: NSRange) -> (table: NSRange, rows: ClosedRange<Int>)? {
+        guard range.length > 0, let tr = tableRange(containing: range.location) else { return nil }
+        let rows = rowRanges(in: tr)
+        let hit = rows.indices.filter { range.location <= rows[$0].start && NSMaxRange(range) >= rows[$0].contentEnd }
+        guard let first = hit.first, let last = hit.last, first >= 1 else { return nil }
+        // ไม่แตะเนื้อหาของแถวอื่น
+        guard range.location >= rows[first].start - 1, NSMaxRange(range) <= rows[last].end else { return nil }
+        return (tr, first...last)
+    }
+
     func readTable(_ range: NSRange) -> TableModel? {
         TableModel.from(MarkdownSerializer.paragraphs(of: storage.attributedSubstring(from: range)))
     }
@@ -65,6 +91,23 @@ extension EditorTextView {
         guard m.cols > 1 else { return nil }
         m.deleteColumn(c); return (r, min(c, m.cols - 1)) } }
     func deleteTable() { applyTable { _, _, _ in nil } }
+
+    /// ลบหลายแถว (ไม่รวมหัวตาราง) แล้ววางเคอร์เซอร์ที่แถวถัดไป
+    func deleteRows(_ rows: ClosedRange<Int>, table tr: NSRange) {
+        guard var m = readTable(tr) else { return }
+        for r in rows.reversed() { m.deleteRow(r) }
+        replaceRange(tr, with: MarkdownParser.attributedString(from: m.blocks(), terminated: true), selection: NSRange(location: tr.location, length: 0))
+        selectCell(row: min(rows.lowerBound, m.rows.count - 1), col: 0, tableStart: tr.location, cols: m.cols)
+    }
+
+    /// เลือกทั้งแถวที่เคอร์เซอร์อยู่ (ลบต่อได้ด้วย Delete/Backspace)
+    func selectRow() {
+        let caret = selectedRange().location
+        guard let tr = tableRange(containing: caret), let cell = cellInfo(at: caret) else { return }
+        let rows = rowRanges(in: tr)
+        guard cell.row < rows.count else { return }
+        setSelectedRange(NSRange(location: rows[cell.row].start, length: rows[cell.row].contentEnd - rows[cell.row].start))
+    }
     func alignColumn(_ a: Int) { applyTable { m, r, c in m.align[c] = a; return (r, c) } }
 
     // MARK: - ย้ายระหว่างเซลล์
@@ -123,7 +166,24 @@ extension EditorTextView {
     }
 
 
+    /// เลือกครบทั้งแถว (หนึ่งแถวขึ้นไป) แล้วกดลบ = ลบแถวนั้นออก
+    /// (NSTextView แยก selection ข้ามเซลล์เป็นหลายช่วง จึงต้องดูทั้ง selection ก่อนเริ่มลบ)
+    func deleteSelectedRows() -> Bool {
+        let ranges = selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
+        guard let first = ranges.first else { return false }
+        let all = ranges.dropFirst().reduce(first) { NSUnionRange($0, $1) }
+        guard let hit = fullBodyRows(covered: all) else { return false }
+        deleteRows(hit.rows, table: hit.table)
+        return true
+    }
+
+    override func delete(_ sender: Any?) {
+        if deleteSelectedRows() { return }
+        super.delete(sender)
+    }
+
     override func deleteForward(_ sender: Any?) {
+        if deleteSelectedRows() { return }
         let sel = selectedRange()
         if sel.length == 0, blockKindAtCaret.isTableCell {
             let pr = paragraphRange(containing: sel.location)
@@ -280,6 +340,7 @@ extension EditorTextView {
         guard let r = tableRange(containing: selectedRange().location) else { return }
         setSelectedRange(r)
     }
+    @objc func jotSelectRow(_ s: Any?) { selectRow() }
     @objc func jotInsertTable(_ s: Any?) { insertDefaultTable() }
     @objc func jotTableRowAbove(_ s: Any?) { insertRow(below: false) }
     @objc func jotTableRowBelow(_ s: Any?) { insertRow(below: true) }
@@ -296,7 +357,7 @@ extension EditorTextView {
         guard let a = item.action else { return nil }
         let cell = cellInfo(at: selectedRange().location)
         switch a {
-        case #selector(jotSelectTable(_:)): return cell != nil
+        case #selector(jotSelectTable(_:)), #selector(jotSelectRow(_:)): return cell != nil
         case #selector(jotInsertTable(_:)): return !blockKindAtCaret.isCodeLike && cell == nil
         case #selector(jotTableRowAbove(_:)), #selector(jotTableDeleteRow(_:)): return (cell?.row ?? 0) >= 1
         case #selector(jotTableRowBelow(_:)), #selector(jotTableColumnLeft(_:)), #selector(jotTableColumnRight(_:)),
@@ -310,7 +371,7 @@ extension EditorTextView {
     /// เมนูคลิกขวาในตาราง
     func tableContextMenu() -> NSMenu {
         let m = NSMenu()
-        for (t, sel) in [("Select Table", #selector(jotSelectTable(_:))), ("Insert Row Above", #selector(jotTableRowAbove(_:))), ("Insert Row Below", #selector(jotTableRowBelow(_:))),
+        for (t, sel) in [("Select Row", #selector(jotSelectRow(_:))), ("Select Table", #selector(jotSelectTable(_:))),("Insert Row Above", #selector(jotTableRowAbove(_:))), ("Insert Row Below", #selector(jotTableRowBelow(_:))),
                          ("Insert Column Left", #selector(jotTableColumnLeft(_:))), ("Insert Column Right", #selector(jotTableColumnRight(_:))),
                          ("Delete Row", #selector(jotTableDeleteRow(_:))), ("Delete Column", #selector(jotTableDeleteColumn(_:))), ("Delete Table", #selector(jotTableDelete(_:))),
                          ("Align Column Left", #selector(jotTableAlignLeft(_:))), ("Align Column Center", #selector(jotTableAlignCenter(_:))), ("Align Column Right", #selector(jotTableAlignRight(_:)))] {

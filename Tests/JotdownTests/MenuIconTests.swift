@@ -25,7 +25,7 @@ import AppKit
         let (_, vc) = makeEditor("| a | b |\n|---|---|\n| 1 | 2 |\n")
         let m = vc.textView.tableContextMenu()
         #expect(missingImages(m).isEmpty, Comment(rawValue: "\(missingImages(m))"))
-        #expect(m.items.filter { !$0.isSeparatorItem }.count == 11)
+        #expect(m.items.filter { !$0.isSeparatorItem }.count == 12)
     }
 
     @Test func linkAndVideoContextItemsHaveImages() {

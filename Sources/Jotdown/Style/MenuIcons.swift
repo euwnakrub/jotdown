@@ -31,6 +31,7 @@ enum MenuIcons {
         "jotInsertTable:": "tablecells",
         "jotInsertDivider:": "minus",
         // ตาราง
+        "jotSelectRow:": "rectangle.split.3x1",
         "jotSelectTable:": "rectangle.dashed",
         "jotTableRowAbove:": "arrow.up.to.line",
         "jotTableRowBelow:": "arrow.down.to.line",

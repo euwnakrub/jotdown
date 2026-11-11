@@ -119,6 +119,7 @@ enum MainMenu {
             submenu("Table", [
                 fmt("Insert Table", "jotInsertTable:", "t", [.command, .control]),
                 .separator(),
+                fmt("Select Row", "jotSelectRow:", "", []),
                 fmt("Select Table", "jotSelectTable:", "", []),
                 .separator(),
                 fmt("Insert Row Above", "jotTableRowAbove:", "", []),

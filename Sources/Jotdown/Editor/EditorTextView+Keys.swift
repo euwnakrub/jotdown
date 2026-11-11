@@ -255,12 +255,17 @@ extension EditorTextView {
 
     // MARK: - Backspace
     override func deleteBackward(_ sender: Any?) {
+        if deleteSelectedRows() { return }
         let sel = selectedRange()
         guard sel.length == 0 else { super.deleteBackward(sender); return }
         let loc = sel.location
         let pr = paragraphRange(containing: loc)
         let kind = blockKindAtCaret
-        if kind.isTableCell { return }      // ไม่ลบโครงตาราง
+        if kind.isTableCell {
+            // ต้นเซลล์: ไม่ลบโครงตาราง / กลางเซลล์: ลบตัวอักษรตามปกติ
+            if loc > pr.location { super.deleteBackward(sender) }
+            return
+        }
         if kind == .thematicBreak {
             applyKind { _ in .paragraph }
             return

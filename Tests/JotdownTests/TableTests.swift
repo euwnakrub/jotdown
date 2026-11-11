@@ -331,6 +331,61 @@ import AppKit
         #expect(doc.currentMarkdown.contains("x"))
     }
 
+    @Test func backspaceDeletesTextInsideCellWithoutSelecting() {
+        let (doc, vc) = tableDoc()
+        let tv = vc.textView!
+        tv.type("")
+        tv.select(NSMaxRange(tv.nsString.range(of: "1")))     // เคอร์เซอร์ท้าย "1"
+        tv.type("23")
+        tv.event { tv.deleteBackward(nil) }
+        tv.event { tv.deleteBackward(nil) }
+        tv.event { tv.deleteBackward(nil) }                    // ลบ "1" -> เซลล์ว่าง
+        #expect(doc.currentMarkdown.contains("|     | 2   |"), Comment(rawValue: doc.currentMarkdown))
+        tv.event { tv.deleteBackward(nil) }                    // ต้นเซลล์: โครงตารางคงอยู่
+        #expect(doc.currentMarkdown.contains("|     | 2   |\n"), Comment(rawValue: doc.currentMarkdown))
+        #expect(doc.currentMarkdown.contains("| a   | b   |"))
+    }
+
+    static let threeRowsMD = "| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n"
+
+    @Test func selectRowThenBackspaceDeletesRow() {
+        let (doc, vc) = makeEditor(Self.threeRowsMD, explicitUndo: true)
+        let tv = vc.textView!
+        tv.select(tv.nsString.range(of: "3").location)
+        #expect(tv.validateMenuItem(NSMenuItem(title: "", action: #selector(EditorTextView.jotSelectRow(_:)), keyEquivalent: "")))
+        tv.jotSelectRow(nil)
+        #expect(tv.nsString.substring(with: tv.selectedRange()) == "3\n4")
+        tv.event { tv.deleteBackward(nil) }
+        #expect(doc.currentMarkdown == "| a   | b   |\n| --- | --- |\n| 1   | 2   |\n| 5   | 6   |\n", Comment(rawValue: doc.currentMarkdown))
+        #expect(tv.cellInfo(at: tv.selectedRange().location)?.row == 2)
+        doc.undoManager?.undo()
+        #expect(doc.currentMarkdown.contains("| 3   | 4   |"))
+    }
+
+    @Test func dragAcrossRowsDeletesThem() {
+        let (doc, vc) = makeEditor(Self.threeRowsMD, explicitUndo: true)
+        let tv = vc.textView!
+        let s = tv.nsString
+        let from = s.range(of: "1").location, to = NSMaxRange(s.range(of: "4"))
+        tv.select(from, to - from)
+        tv.event { tv.deleteForward(nil) }
+        #expect(doc.currentMarkdown == "| a   | b   |\n| --- | --- |\n| 5   | 6   |\n", Comment(rawValue: doc.currentMarkdown))
+    }
+
+    @Test func partialRowOrHeaderOnlyClears() {
+        let (doc, vc) = makeEditor(Self.threeRowsMD, explicitUndo: true)
+        let tv = vc.textView!
+        let s = tv.nsString
+        // หัวตาราง: ล้างเนื้อหา ไม่ลบแถว
+        tv.select(0, NSMaxRange(s.range(of: "b")))
+        tv.event { tv.deleteBackward(nil) }
+        #expect(doc.currentMarkdown.hasPrefix("|     |     |\n| --- | --- |\n| 1"), Comment(rawValue: doc.currentMarkdown))
+        // พิมพ์ทับทั้งแถว: ล้างเนื้อหาแล้วพิมพ์ ไม่ลบแถว
+        tv.select(tv.nsString.range(of: "3").location); tv.jotSelectRow(nil)
+        tv.type("x")
+        #expect(doc.currentMarkdown.components(separatedBy: "\n").count == 6, Comment(rawValue: doc.currentMarkdown))
+    }
+
     @Test func selectTableMenuItemExists() {
         let menu = MainMenu.build()
         let table = menu.items.first { $0.title == "Format" }!.submenu!.items.first { $0.title == "Table" }!.submenu!
